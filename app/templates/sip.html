@@ -1,7 +1,68 @@
 {% extends "base.html" %}
 {% block page_title %}SIP Settings{% endblock %}
 {% block content %}
-<div class="empty-state">
-    <p>SIP configuration coming in Phase 2.</p>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
 </div>
+{% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('sip.save') }}">
+
+    <h3>Inbound SIP Trunk</h3>
+    <div class="grid">
+        <label>
+            Server
+            <input type="text" name="sip.inbound_server" value="{{ values['sip.inbound_server'] }}" placeholder="sip.provider.com">
+        </label>
+        <label>
+            Port
+            <input type="text" name="sip.inbound_port" value="{{ values['sip.inbound_port'] }}" placeholder="5060">
+        </label>
+    </div>
+    <div class="grid">
+        <label>
+            Username
+            <input type="text" name="sip.inbound_username" value="{{ values['sip.inbound_username'] }}" placeholder="username">
+        </label>
+        <label>
+            Password
+            <input type="password" name="sip.inbound_password" value="{{ values['sip.inbound_password'] }}" placeholder="password">
+        </label>
+    </div>
+
+    <h3>Outbound SIP Trunk <small>(optional)</small></h3>
+    <div class="grid">
+        <label>
+            Server
+            <input type="text" name="sip.outbound_server" value="{{ values['sip.outbound_server'] }}" placeholder="sip.provider.com">
+        </label>
+        <label>
+            Port
+            <input type="text" name="sip.outbound_port" value="{{ values['sip.outbound_port'] }}" placeholder="5060">
+        </label>
+    </div>
+    <div class="grid">
+        <label>
+            Username
+            <input type="text" name="sip.outbound_username" value="{{ values['sip.outbound_username'] }}" placeholder="username">
+        </label>
+        <label>
+            Password
+            <input type="password" name="sip.outbound_password" value="{{ values['sip.outbound_password'] }}" placeholder="password">
+        </label>
+    </div>
+
+    <h3>Call Forwarding</h3>
+    <label>
+        Forward Number
+        <input type="text" name="sip.forward_number" value="{{ values['sip.forward_number'] }}" placeholder="+31612345678">
+    </label>
+
+    <button type="submit">Save SIP Settings</button>
+</form>
 {% endblock %}

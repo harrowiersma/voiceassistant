@@ -1,0 +1,69 @@
+; Auto-generated pjsip.conf — do not edit manually
+
+; ── Transport ──────────────────────────────────────────────
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0
+
+; ── Inbound Trunk ──────────────────────────────────────────
+[inbound-reg]
+type=registration
+transport=transport-udp
+outbound_auth=inbound-auth
+server_uri=sip:{{ sip_inbound_server }}:{{ sip_inbound_port }}
+client_uri=sip:{{ sip_inbound_username }}@{{ sip_inbound_server }}:{{ sip_inbound_port }}
+
+[inbound-auth]
+type=auth
+auth_type=userpass
+username={{ sip_inbound_username }}
+password={{ sip_inbound_password }}
+
+[inbound-aor]
+type=aor
+contact=sip:{{ sip_inbound_server }}:{{ sip_inbound_port }}
+
+[inbound-endpoint]
+type=endpoint
+transport=transport-udp
+context=inbound
+disallow=all
+allow=ulaw
+allow=alaw
+outbound_auth=inbound-auth
+aors=inbound-aor
+from_user={{ sip_inbound_username }}
+from_domain={{ sip_inbound_server }}
+{% if sip_outbound_server %}
+
+; ── Outbound Trunk ─────────────────────────────────────────
+[outbound-reg]
+type=registration
+transport=transport-udp
+outbound_auth=outbound-auth
+server_uri=sip:{{ sip_outbound_server }}:{{ sip_outbound_port }}
+client_uri=sip:{{ sip_outbound_username }}@{{ sip_outbound_server }}:{{ sip_outbound_port }}
+
+[outbound-auth]
+type=auth
+auth_type=userpass
+username={{ sip_outbound_username }}
+password={{ sip_outbound_password }}
+
+[outbound-aor]
+type=aor
+contact=sip:{{ sip_outbound_server }}:{{ sip_outbound_port }}
+
+[outbound-endpoint]
+type=endpoint
+transport=transport-udp
+context=outbound
+disallow=all
+allow=ulaw
+allow=alaw
+outbound_auth=outbound-auth
+aors=outbound-aor
+from_user={{ sip_outbound_username }}
+from_domain={{ sip_outbound_server }}
+{% endif %}

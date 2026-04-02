@@ -1,0 +1,26 @@
+; Auto-generated extensions.conf — do not edit manually
+
+[inbound]
+; Incoming calls routed to AudioSocket for AI processing
+exten => _X.,1,NoOp(Incoming call from ${CALLERID(num)})
+ same => n,Answer()
+ same => n,AudioSocket(127.0.0.1:9092)
+ same => n,Hangup()
+
+[outbound]
+; Outbound dialling — uses outbound trunk if configured, falls back to inbound
+{% if sip_outbound_server %}
+exten => _X.,1,NoOp(Outbound call to ${EXTEN} via outbound trunk)
+ same => n,Dial(PJSIP/${EXTEN}@outbound-endpoint)
+ same => n,Hangup()
+{% else %}
+exten => _X.,1,NoOp(Outbound call to ${EXTEN} via inbound trunk)
+ same => n,Dial(PJSIP/${EXTEN}@inbound-endpoint)
+ same => n,Hangup()
+{% endif %}
+
+[forward]
+; Forward to configured number
+exten => s,1,NoOp(Forwarding call to {{ sip_forward_number }})
+ same => n,Dial(PJSIP/{{ sip_forward_number }}@{% if sip_outbound_server %}outbound-endpoint{% else %}inbound-endpoint{% endif %})
+ same => n,Hangup()
