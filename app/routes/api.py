@@ -1,7 +1,8 @@
 import os
 import shutil
 import subprocess
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
+from db.connection import get_db_connection
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -73,3 +74,14 @@ def status():
             "token_expires": None,
         },
     })
+
+
+@bp.route("/knowledge/rules")
+def knowledge_rules():
+    db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
+    conn = get_db_connection(db_path)
+    rules = conn.execute(
+        "SELECT * FROM knowledge_rules WHERE enabled = 1 ORDER BY priority DESC, id"
+    ).fetchall()
+    conn.close()
+    return jsonify({"rules": [dict(r) for r in rules]})
