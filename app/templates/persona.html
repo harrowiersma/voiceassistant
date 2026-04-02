@@ -1,7 +1,44 @@
 {% extends "base.html" %}
 {% block page_title %}Persona{% endblock %}
 {% block content %}
-<div class="empty-state">
-    <p>Secretary persona editor coming in Phase 2.</p>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
 </div>
+{% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('persona.save') }}">
+
+    <h3>Company</h3>
+    <label>
+        Company Name
+        <input type="text" name="persona.company_name" value="{{ values['persona.company_name'] }}" placeholder="Wiersma Consulting">
+    </label>
+
+    <h3>Greeting</h3>
+    <label>
+        Greeting Message
+        <textarea name="persona.greeting" rows="3" placeholder="Hello, you've reached {company}. How can I help you today?">{{ values['persona.greeting'] }}</textarea>
+        <small>Use {company} to insert the company name automatically.</small>
+    </label>
+
+    <h3>Personality</h3>
+    <label>
+        Personality Prompt
+        <textarea name="persona.personality" rows="5" placeholder="You are a professional and friendly phone secretary...">{{ values['persona.personality'] }}</textarea>
+        <small>Describe the tone and behaviour of the AI secretary.</small>
+    </label>
+
+    <h3>Unavailable Message</h3>
+    <label>
+        Unavailable Message
+        <textarea name="persona.unavailable_message" rows="3" placeholder="I'm sorry, no one is available to take your call right now.">{{ values['persona.unavailable_message'] }}</textarea>
+    </label>
+
+    <button type="submit">Save Persona Settings</button>
+</form>
 {% endblock %}
