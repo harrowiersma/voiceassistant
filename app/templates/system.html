@@ -1,7 +1,74 @@
 {% extends "base.html" %}
 {% block page_title %}System{% endblock %}
 {% block content %}
-<div class="empty-state">
-    <p>System management coming in Phase 2.</p>
+
+<h3>Services</h3>
+<table role="grid">
+    <thead>
+        <tr>
+            <th>Service</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for svc in services %}
+        <tr>
+            <td>{{ svc.name }}</td>
+            <td>
+                <span class="status-badge">
+                    <span class="status-dot {% if svc.status == 'active' %}ok{% elif svc.status == 'failed' %}error{% else %}idle{% endif %}"></span>
+                    {{ svc.status }}
+                </span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>System Health</h3>
+<div class="card-grid"
+     hx-get="/api/status"
+     hx-trigger="load, every 10s"
+     hx-swap="innerHTML"
+     hx-target="#health-cards">
+    <div id="health-cards">
+        <article class="data-card">
+            <h3>Loading...</h3>
+            <div class="value">
+                <span class="status-badge">
+                    <span class="status-dot idle"></span>
+                    Connecting...
+                </span>
+            </div>
+        </article>
+    </div>
 </div>
+
+<script>
+document.body.addEventListener("htmx:beforeSwap", function(evt) {
+    if (evt.detail.target.id !== "health-cards") return;
+    try {
+        var data = JSON.parse(evt.detail.serverResponse);
+        var html = "";
+        if (data.cpu_temp !== undefined) {
+            html += '<article class="data-card"><h3>CPU Temp</h3>';
+            html += '<div class="value">' + data.cpu_temp + '&deg;C</div></article>';
+        }
+        if (data.ram !== undefined) {
+            html += '<article class="data-card"><h3>RAM</h3>';
+            html += '<div class="value">' + data.ram + '%</div></article>';
+        }
+        if (data.disk !== undefined) {
+            html += '<article class="data-card"><h3>Disk</h3>';
+            html += '<div class="value">' + data.disk + '%</div></article>';
+        }
+        if (html) {
+            evt.detail.serverResponse = html;
+        }
+    } catch(e) {
+        // Not JSON — let HTMX handle it normally
+    }
+});
+</script>
+
 {% endblock %}
