@@ -24,6 +24,27 @@ def test_api_status_returns_json(client):
     assert "graph" in data
 
 
+def test_api_status_ai_section_has_all_fields(client):
+    response = client.get("/api/status")
+    data = json.loads(response.data)
+    ai = data["ai"]
+    assert "vosk" in ai
+    assert "ollama" in ai
+    assert "piper" in ai
+    assert isinstance(ai["vosk"], str)
+    assert isinstance(ai["ollama"], str)
+    assert isinstance(ai["piper"], str)
+
+
+def test_api_status_asterisk_section(client):
+    response = client.get("/api/status")
+    data = json.loads(response.data)
+    ast = data["asterisk"]
+    assert "status" in ast
+    assert "active_calls" in ast
+    assert isinstance(ast["active_calls"], int)
+
+
 def test_api_status_system_has_cpu_and_ram(client):
     response = client.get("/api/status")
     data = json.loads(response.data)

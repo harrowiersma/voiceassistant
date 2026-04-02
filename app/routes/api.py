@@ -22,6 +22,51 @@ def _get_cpu_temp():
     return None
 
 
+def _check_ollama():
+    """Check if Ollama API is reachable."""
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            if resp.status == 200:
+                return "running"
+    except Exception:
+        pass
+    return "not_running"
+
+
+def _check_asterisk():
+    """Check if Asterisk PBX is running."""
+    try:
+        result = subprocess.run(
+            ["asterisk", "-rx", "core show version"],
+            capture_output=True, text=True, timeout=3
+        )
+        if result.returncode == 0:
+            return "running"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return "not_running"
+
+
+def _check_vosk():
+    """Check if Vosk speech recognition library is installed."""
+    try:
+        import vosk  # noqa: F401
+        return "installed"
+    except ImportError:
+        return "not_installed"
+
+
+def _check_piper():
+    """Check if Piper TTS binary is available."""
+    try:
+        result = subprocess.run(["piper", "--version"], capture_output=True, timeout=2)
+        return "installed" if result.returncode == 0 else "not_installed"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return "not_installed"
+
+
 def _get_ram_info():
     """Get RAM usage in MB."""
     try:
@@ -60,14 +105,14 @@ def status():
             "disk_used_pct": round(disk.used / disk.total * 100, 1),
         },
         "asterisk": {
-            "status": "not_configured",
+            "status": _check_asterisk(),
             "trunk": "none",
             "active_calls": 0,
         },
         "ai": {
-            "vosk": "not_loaded",
-            "ollama": "not_running",
-            "piper": "not_loaded",
+            "vosk": _check_vosk(),
+            "ollama": _check_ollama(),
+            "piper": _check_piper(),
         },
         "graph": {
             "status": "not_connected",
