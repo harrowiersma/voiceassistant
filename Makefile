@@ -19,3 +19,9 @@ test:
 
 clean:
 	rm -rf $(VENV) instance/
+
+image:
+	cd pi-gen && bash build.sh
+
+image-clean:
+	rm -rf pi-gen/pi-gen
