@@ -1,11 +1,56 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Voice Secretary</title>
-</head>
-<body>
-    <h1>Voice Secretary</h1>
-    <p>Dashboard home</p>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block page_title %}Home{% endblock %}
+
+{% block content %}
+<div class="card-grid">
+    <article class="data-card">
+        <h3>System Health</h3>
+        <div class="value">
+            <span class="status-badge">
+                <span class="status-dot idle"></span>
+                Loading...
+            </span>
+        </div>
+    </article>
+
+    <article class="data-card">
+        <h3>Asterisk PBX</h3>
+        <div class="value">
+            <span class="status-badge">
+                <span class="status-dot idle"></span>
+                Not configured
+            </span>
+        </div>
+    </article>
+
+    <article class="data-card">
+        <h3>AI Engine</h3>
+        <div class="value">
+            <span class="status-badge">
+                <span class="status-dot idle"></span>
+                Not running
+            </span>
+        </div>
+    </article>
+
+    <article class="data-card">
+        <h3>MS Graph</h3>
+        <div class="value">
+            <span class="status-badge">
+                <span class="status-dot idle"></span>
+                Not connected
+            </span>
+        </div>
+    </article>
+</div>
+
+<h2>Recent Calls</h2>
+<div class="empty-state">
+    <p>No calls yet.</p>
+    <p>Your first call will appear here once SIP is configured.</p>
+    <div class="action">
+        <a href="/sip" role="button">Set up SIP trunk</a>
+    </div>
+</div>
+{% endblock %}

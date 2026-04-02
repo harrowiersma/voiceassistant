@@ -1,0 +1,208 @@
+/* ===== Design Tokens ===== */
+:root[data-theme="dark"] {
+    --bg-primary:     #1a1a2e;
+    --bg-card:        #16213e;
+    --text-primary:   #e0e0e0;
+    --text-secondary: #8a8a9a;
+    --accent:         #0f9b8e;
+    --status-ok:      #2ecc71;
+    --status-warn:    #f39c12;
+    --status-error:   #e74c3c;
+    --status-idle:    #636e72;
+    --sidebar-bg:     #0f0f23;
+    --sidebar-width:  240px;
+}
+
+:root[data-theme="light"] {
+    --bg-primary:     #f5f5f5;
+    --bg-card:        #ffffff;
+    --text-primary:   #1a1a2e;
+    --text-secondary: #636e72;
+    --accent:         #0f9b8e;
+    --status-ok:      #2ecc71;
+    --status-warn:    #f39c12;
+    --status-error:   #e74c3c;
+    --status-idle:    #636e72;
+    --sidebar-bg:     #e8e8e8;
+    --sidebar-width:  240px;
+}
+
+/* ===== Layout ===== */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 0.9rem;
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--text-secondary);
+}
+
+.sidebar-header {
+    padding: 0.5rem 0 1rem;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.nav-group {
+    margin-bottom: 1.5rem;
+}
+
+.nav-group-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0 0.5rem;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar li a {
+    display: block;
+    padding: 0.4rem 0.75rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+}
+
+.sidebar li a:hover {
+    background: var(--bg-card);
+}
+
+.sidebar li a.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--text-secondary);
+}
+
+.sidebar-footer button {
+    width: 100%;
+    font-size: 0.75rem;
+    padding: 0.4rem;
+}
+
+/* ===== Main Content ===== */
+.content {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    padding: 1.5rem 2rem;
+    background: var(--bg-primary);
+    min-height: 100vh;
+}
+
+.content-header h1 {
+    font-size: 1.5rem;
+    margin: 0 0 1.5rem;
+}
+
+/* ===== Status Badge ===== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.ok      { background: var(--status-ok); }
+.status-dot.warn    { background: var(--status-warn); }
+.status-dot.error   { background: var(--status-error); }
+.status-dot.idle    { background: var(--status-idle); }
+
+/* ===== Data Card ===== */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.data-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--text-secondary);
+}
+
+.data-card h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem;
+}
+
+.data-card .value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-family: "IBM Plex Mono", monospace;
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+}
+
+.empty-state p {
+    margin: 0.5rem 0;
+}
+
+.empty-state .action {
+    margin-top: 1rem;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.2s;
+        z-index: 100;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .content {
+        margin-left: 0;
+    }
+}
