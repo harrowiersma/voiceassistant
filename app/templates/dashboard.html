@@ -3,47 +3,89 @@
 {% block page_title %}Home{% endblock %}
 
 {% block content %}
-<div class="card-grid">
+<div class="card-grid"
+     hx-get="/api/status"
+     hx-trigger="load, every 10s"
+     hx-swap="innerHTML"
+     hx-target="#status-cards">
+    <div id="status-cards">
+        <article class="data-card">
+            <h3>Loading...</h3>
+            <div class="value">
+                <span class="status-badge">
+                    <span class="status-dot idle"></span>
+                    Connecting...
+                </span>
+            </div>
+        </article>
+    </div>
+</div>
+
+<script>
+// Override HTMX to handle JSON response for status cards
+document.addEventListener("htmx:beforeSwap", function(evt) {
+    if (evt.detail.target.id === "status-cards") {
+        try {
+            const data = JSON.parse(evt.detail.xhr.responseText);
+            evt.detail.serverResponse = renderStatusCards(data);
+        } catch(e) {
+            // Not JSON, let HTMX handle normally
+        }
+    }
+});
+
+function statusDot(state) {
+    const map = {
+        "ok": "ok", "connected": "ok", "loaded": "ok", "running": "ok",
+        "warn": "warn", "expiring": "warn",
+        "error": "error", "failed": "error",
+    };
+    return map[state] || "idle";
+}
+
+function renderStatusCards(data) {
+    const s = data.system;
+    const cpuText = s.cpu_temp !== null ? s.cpu_temp + "\u00b0C" : "N/A";
+    const ramText = s.ram_used_mb + " / " + s.ram_total_mb + " MB";
+
+    return `
     <article class="data-card">
         <h3>System Health</h3>
-        <div class="value">
-            <span class="status-badge">
-                <span class="status-dot idle"></span>
-                Loading...
-            </span>
+        <div class="value" style="font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem;">
+            <div>CPU: ${cpuText}</div>
+            <div>RAM: ${ramText}</div>
+            <div>Disk: ${s.disk_used_pct}%</div>
         </div>
     </article>
-
     <article class="data-card">
         <h3>Asterisk PBX</h3>
         <div class="value">
             <span class="status-badge">
-                <span class="status-dot idle"></span>
-                Not configured
+                <span class="status-dot ${statusDot(data.asterisk.status)}"></span>
+                ${data.asterisk.status.replace(/_/g, " ")}
             </span>
         </div>
     </article>
-
     <article class="data-card">
         <h3>AI Engine</h3>
-        <div class="value">
-            <span class="status-badge">
-                <span class="status-dot idle"></span>
-                Not running
-            </span>
+        <div class="value" style="font-size: 0.8rem;">
+            <div><span class="status-dot ${statusDot(data.ai.vosk)}"></span> Vosk: ${data.ai.vosk}</div>
+            <div><span class="status-dot ${statusDot(data.ai.ollama)}"></span> Ollama: ${data.ai.ollama}</div>
+            <div><span class="status-dot ${statusDot(data.ai.piper)}"></span> Piper: ${data.ai.piper}</div>
         </div>
     </article>
-
     <article class="data-card">
         <h3>MS Graph</h3>
         <div class="value">
             <span class="status-badge">
-                <span class="status-dot idle"></span>
-                Not connected
+                <span class="status-dot ${statusDot(data.graph.status)}"></span>
+                ${data.graph.status.replace(/_/g, " ")}
             </span>
         </div>
     </article>
-</div>
+    `;
+}
+</script>
 
 <h2>Recent Calls</h2>
 <div class="empty-state">
