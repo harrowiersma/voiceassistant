@@ -1,0 +1,21 @@
+.PHONY: install run test clean
+
+VENV := .venv
+PYTHON := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+FLASK := $(VENV)/bin/flask
+
+install:
+	python3 -m venv $(VENV)
+	$(PIP) install -r requirements.txt
+	$(PYTHON) -c "from db.init_db import init_db; init_db()"
+	@echo "Install complete. Run: make run"
+
+run:
+	$(PYTHON) -m app
+
+test:
+	$(VENV)/bin/pytest tests/ -v
+
+clean:
+	rm -rf $(VENV) instance/
