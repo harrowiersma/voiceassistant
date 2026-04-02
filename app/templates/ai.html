@@ -1,7 +1,57 @@
 {% extends "base.html" %}
 {% block page_title %}AI Settings{% endblock %}
 {% block content %}
-<div class="empty-state">
-    <p>AI model configuration coming in Phase 2.</p>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
 </div>
+{% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('ai.save') }}">
+
+    <h3>Speech-to-Text</h3>
+    <label>
+        STT Model
+        <select name="ai.stt_model">
+            <option value="vosk-small" {{ 'selected' if values['ai.stt_model'] == 'vosk-small' }}>vosk-small</option>
+            <option value="vosk-large" {{ 'selected' if values['ai.stt_model'] == 'vosk-large' }}>vosk-large</option>
+        </select>
+    </label>
+
+    <h3>Language Model</h3>
+    <label>
+        LLM Model
+        <select name="ai.llm_model">
+            <option value="llama3.2:1b" {{ 'selected' if values['ai.llm_model'] == 'llama3.2:1b' }}>llama3.2:1b</option>
+            <option value="llama3.2:3b" {{ 'selected' if values['ai.llm_model'] == 'llama3.2:3b' }}>llama3.2:3b</option>
+        </select>
+    </label>
+
+    <h3>Text-to-Speech</h3>
+    <label>
+        TTS Voice
+        <select name="ai.tts_voice">
+            <option value="en-us-amy-medium" {{ 'selected' if values['ai.tts_voice'] == 'en-us-amy-medium' }}>en-us-amy-medium</option>
+            <option value="en-gb-alan-medium" {{ 'selected' if values['ai.tts_voice'] == 'en-gb-alan-medium' }}>en-gb-alan-medium</option>
+        </select>
+    </label>
+
+    <h3>Timeouts</h3>
+    <div class="grid">
+        <label>
+            Response Timeout (seconds)
+            <input type="number" name="ai.response_timeout" value="{{ values['ai.response_timeout'] }}" min="5" max="30">
+        </label>
+        <label>
+            Max Call Duration (seconds)
+            <input type="number" name="ai.max_call_duration" value="{{ values['ai.max_call_duration'] }}" min="60" max="600">
+        </label>
+    </div>
+
+    <button type="submit">Save AI Settings</button>
+</form>
 {% endblock %}

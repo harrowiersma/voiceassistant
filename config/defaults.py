@@ -16,3 +16,11 @@ SIP_DEFAULTS = {
     "sip.outbound_port": "",
     "sip.forward_number": "",
 }
+
+AI_DEFAULTS = {
+    "ai.stt_model": "vosk-small",
+    "ai.llm_model": "llama3.2:1b",
+    "ai.tts_voice": "en-us-amy-medium",
+    "ai.response_timeout": "10",
+    "ai.max_call_duration": "300",
+}
