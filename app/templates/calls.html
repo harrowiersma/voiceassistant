@@ -1,7 +1,90 @@
 {% extends "base.html" %}
 {% block page_title %}Call Log{% endblock %}
 {% block content %}
-<div class="empty-state">
-    <p>Call history will appear here once SIP is configured.</p>
+
+<div class="filter-bar" style="margin-bottom: 1rem;">
+    <label for="action-filter">Filter by action:</label>
+    <select id="action-filter" onchange="filterCalls(this.value)" style="display: inline-block; width: auto; margin-left: 0.5rem;">
+        <option value="">All</option>
+        <option value="forwarded">Forwarded</option>
+        <option value="message_taken">Message Taken</option>
+        <option value="voicemail">Voicemail</option>
+    </select>
 </div>
+
+{% if calls %}
+<figure>
+<table role="grid">
+    <thead>
+        <tr>
+            <th>Date/Time</th>
+            <th>Caller</th>
+            <th>Duration</th>
+            <th>Reason</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="calls-table-body">
+        {% for call in calls %}
+        <tr data-action="{{ call.action_taken or '' }}">
+            <td>{{ call.started_at[:16] | replace('T', ' ') if call.started_at else '—' }}</td>
+            <td>
+                {% if call.caller_name %}{{ call.caller_name }}{% endif %}
+                {% if call.caller_number %}<br><small>{{ call.caller_number }}</small>{% endif %}
+            </td>
+            <td>
+                {% if call.duration_seconds is not none %}
+                    {% set mins = call.duration_seconds // 60 %}
+                    {% set secs = call.duration_seconds % 60 %}
+                    {{ mins }} min {{ secs }} sec
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>
+                {% if call.reason %}
+                    {{ call.reason[:50] }}{% if call.reason | length > 50 %}...{% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>{{ (call.action_taken or '—') | replace('_', ' ') | title }}</td>
+        </tr>
+        {% if call._transcript_parsed %}
+        <tr data-action="{{ call.action_taken or '' }}" class="transcript-row">
+            <td colspan="5" style="padding: 0;">
+                <details>
+                    <summary style="padding: 0.5rem 1rem; cursor: pointer;">Show transcript</summary>
+                    <div style="padding: 0.5rem 1rem 1rem;">
+                        {% for msg in call._transcript_parsed %}
+                            <p><strong>{{ msg.role | default('unknown') | title }}:</strong> {{ msg.text | default('') }}</p>
+                        {% endfor %}
+                    </div>
+                </details>
+            </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+</figure>
+{% else %}
+<div class="empty-state">
+    <p>No calls yet. Your first call will appear here once SIP is configured.</p>
+</div>
+{% endif %}
+
+<script>
+function filterCalls(action) {
+    const rows = document.querySelectorAll('#calls-table-body tr');
+    rows.forEach(row => {
+        if (!action || row.dataset.action === action) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+
 {% endblock %}

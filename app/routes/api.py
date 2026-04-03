@@ -1,7 +1,7 @@
 import os
 import shutil
 import subprocess
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, request
 from db.connection import get_db_connection
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -119,6 +119,24 @@ def status():
             "token_expires": None,
         },
     })
+
+
+@bp.route("/calls")
+def calls_list():
+    db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
+    conn = get_db_connection(db_path)
+    action_filter = request.args.get("action")
+    if action_filter:
+        calls = conn.execute(
+            "SELECT * FROM calls WHERE action_taken = ? ORDER BY started_at DESC LIMIT 100",
+            (action_filter,),
+        ).fetchall()
+    else:
+        calls = conn.execute(
+            "SELECT * FROM calls ORDER BY started_at DESC LIMIT 100"
+        ).fetchall()
+    conn.close()
+    return jsonify({"calls": [dict(c) for c in calls]})
 
 
 @bp.route("/knowledge/rules")
