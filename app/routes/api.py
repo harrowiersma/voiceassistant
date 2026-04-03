@@ -193,8 +193,15 @@ def personas_list():
 def knowledge_rules():
     db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
     conn = get_db_connection(db_path)
-    rules = conn.execute(
-        "SELECT * FROM knowledge_rules WHERE enabled = 1 ORDER BY priority DESC, id"
-    ).fetchall()
+    persona_id = request.args.get("persona_id")
+    if persona_id:
+        rules = conn.execute(
+            "SELECT * FROM knowledge_rules WHERE enabled = 1 AND (persona_id = ? OR persona_id IS NULL) ORDER BY priority DESC, id",
+            (int(persona_id),),
+        ).fetchall()
+    else:
+        rules = conn.execute(
+            "SELECT * FROM knowledge_rules WHERE enabled = 1 ORDER BY priority DESC, id"
+        ).fetchall()
     conn.close()
     return jsonify({"rules": [dict(r) for r in rules]})

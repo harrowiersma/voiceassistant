@@ -9,8 +9,9 @@ import logging
 from datetime import datetime
 
 from app.helpers import get_config
+from db.connection import get_db_connection
 from engine.llm import LLMClient
-from engine.prompt_builder import build_system_prompt, get_active_vacation
+from engine.prompt_builder import build_system_prompt, build_system_prompt_for_persona, get_active_vacation
 from engine.tools import TOOL_DEFINITIONS, execute_tool
 
 logger = logging.getLogger(__name__)
@@ -19,9 +20,11 @@ logger = logging.getLogger(__name__)
 class CallSession:
     """State machine for a single inbound phone call."""
 
-    def __init__(self, caller_number, db_path=None):
+    def __init__(self, caller_number, db_path=None, persona_id=None):
         self.caller_number = caller_number
         self.db_path = db_path
+        self.persona_id = persona_id
+        self.persona = None
         self.state = "greeting"
         self.transcript = []
         self.started_at = datetime.now()
@@ -30,8 +33,20 @@ class CallSession:
         self.reason = None
         self.action_taken = None
 
-        # Load system prompt from persona + knowledge rules
-        self.system_prompt = build_system_prompt(db_path)
+        # Load persona from DB if persona_id provided
+        if persona_id is not None:
+            conn = get_db_connection(db_path)
+            row = conn.execute("SELECT * FROM personas WHERE id = ?", (persona_id,)).fetchone()
+            conn.close()
+            if row:
+                self.persona = dict(row)
+
+        # Load system prompt — persona-specific or config-based
+        if self.persona:
+            self.system_prompt = build_system_prompt_for_persona(persona_id, db_path)
+        else:
+            self.system_prompt = build_system_prompt(db_path)
+
         model = get_config("ai.llm_model", default="llama3.2:1b", db_path=db_path)
         self.llm = LLMClient(model=model)
 
@@ -47,6 +62,10 @@ class CallSession:
 
     def get_greeting_text(self):
         """Return the greeting with {company} substituted."""
+        if self.persona:
+            greeting = self.persona.get("greeting", "Hello.")
+            company = self.persona.get("company_name", "")
+            return greeting.replace("{company}", company)
         greeting = get_config("persona.greeting", default="Hello.", db_path=self.db_path)
         company = get_config("persona.company_name", default="", db_path=self.db_path)
         return greeting.replace("{company}", company)

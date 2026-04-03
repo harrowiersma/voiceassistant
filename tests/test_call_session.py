@@ -113,3 +113,18 @@ def test_call_session_silence_handling(db_path):
     response = session.process_turn("")
     assert session.silence_count == 1
     assert "still there" in response.lower()
+
+
+def test_call_session_with_persona(db_path):
+    from engine.call_session import CallSession
+    conn = get_db_connection(db_path)
+    conn.execute(
+        "INSERT INTO personas (name, company_name, greeting, personality, unavailable_message, calendar_type) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ("Sales", "Sales Dept", "Hello, sales here!", "Helpful.", "Sales closed.", "none"),
+    )
+    conn.commit()
+    conn.close()
+    session = CallSession(caller_number="+41791111111", db_path=db_path, persona_id=2)
+    greeting = session.get_greeting_text()
+    assert "sales" in greeting.lower()

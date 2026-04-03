@@ -14,8 +14,11 @@ def index():
     rules = conn.execute(
         "SELECT * FROM knowledge_rules ORDER BY priority DESC, id"
     ).fetchall()
+    personas = conn.execute(
+        "SELECT id, name FROM personas WHERE enabled = 1 ORDER BY is_default DESC, name"
+    ).fetchall()
     conn.close()
-    return render_template("knowledge.html", rules=rules)
+    return render_template("knowledge.html", rules=rules, personas=personas)
 
 
 @bp.route("/knowledge/add", methods=["POST"])
@@ -30,13 +33,15 @@ def add():
     active_from = request.form.get("active_from", "").strip() or None
     active_until = request.form.get("active_until", "").strip() or None
     priority = int(request.form.get("priority", 0))
+    persona_id_str = request.form.get("persona_id", "").strip()
+    persona_id = int(persona_id_str) if persona_id_str else None
 
     conn = get_db_connection(_db_path())
     conn.execute(
         """INSERT INTO knowledge_rules
-           (rule_type, trigger_keywords, response, active_from, active_until, priority)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (rule_type, trigger_keywords, response_text, active_from, active_until, priority),
+           (rule_type, trigger_keywords, response, active_from, active_until, priority, persona_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (rule_type, trigger_keywords, response_text, active_from, active_until, priority, persona_id),
     )
     conn.commit()
     conn.close()

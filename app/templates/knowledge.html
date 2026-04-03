@@ -35,6 +35,16 @@
             <textarea name="response" rows="3" required placeholder="The response the AI should give..."></textarea>
         </label>
 
+        <label>
+            Persona
+            <select name="persona_id">
+                <option value="">All Personas (global)</option>
+                {% for persona in personas %}
+                <option value="{{ persona['id'] }}">{{ persona['name'] }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
         <div class="grid">
             <label>
                 Active From
