@@ -71,4 +71,27 @@ document.body.addEventListener("htmx:beforeSwap", function(evt) {
 });
 </script>
 
+<h3>Config Backup &amp; Restore</h3>
+<div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+    <a href="/api/backup" download="voice-secretary-backup.json" role="button" class="outline">Download Backup</a>
+    <label role="button" class="outline" style="cursor: pointer;">
+        Upload Restore
+        <input type="file" id="restore-file" accept=".json" style="display: none;" onchange="restoreConfig(this)">
+    </label>
+</div>
+<script>
+function restoreConfig(input) {
+    if (!input.files.length) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        fetch('/api/restore', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: e.target.result})
+        .then(function(r) { return r.json(); })
+        .then(function() { alert('Config restored successfully.'); location.reload(); })
+        .catch(function() { alert('Restore failed.'); });
+    };
+    reader.readAsText(input.files[0]);
+    input.value = '';
+}
+</script>
+
 {% endblock %}
