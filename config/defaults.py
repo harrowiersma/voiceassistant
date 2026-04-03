@@ -25,6 +25,16 @@ AI_DEFAULTS = {
     "ai.max_call_duration": "300",
 }
 
+ACTIONS_DEFAULTS = {
+    "actions.smtp_server": "",
+    "actions.smtp_port": "587",
+    "actions.smtp_username": "",
+    "actions.smtp_password": "",
+    "actions.email_to": "",
+    "actions.email_from": "",
+    "actions.notify_on": "message_only",
+}
+
 AVAILABILITY_DEFAULTS = {
     "availability.manual_override": "auto",
     "availability.business_hours_start": "09:00",
