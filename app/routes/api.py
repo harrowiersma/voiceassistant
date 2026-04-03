@@ -1,7 +1,9 @@
+import csv
+import io
 import os
 import shutil
 import subprocess
-from flask import Blueprint, jsonify, current_app, request
+from flask import Blueprint, jsonify, current_app, request, Response
 from db.connection import get_db_connection
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -137,6 +139,30 @@ def calls_list():
         ).fetchall()
     conn.close()
     return jsonify({"calls": [dict(c) for c in calls]})
+
+
+@bp.route("/calls/export")
+def calls_export():
+    db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
+    conn = get_db_connection(db_path)
+    calls = conn.execute(
+        "SELECT started_at, caller_number, caller_name, duration_seconds, reason, action_taken "
+        "FROM calls ORDER BY started_at DESC"
+    ).fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["started_at", "caller_number", "caller_name", "duration_seconds", "reason", "action_taken"])
+    for call in calls:
+        writer.writerow([call["started_at"], call["caller_number"], call["caller_name"],
+                         call["duration_seconds"], call["reason"], call["action_taken"]])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=calls.csv"},
+    )
 
 
 @bp.route("/knowledge/rules")

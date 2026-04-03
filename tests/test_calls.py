@@ -76,3 +76,14 @@ def test_calls_api_filter_by_action(client):
     data = json.loads(response.data)
     for call in data["calls"]:
         assert call["action_taken"] == "forwarded"
+
+
+def test_calls_csv_export(client):
+    db_path = client.application.config["_DB_PATH"]
+    _seed_calls(db_path, 3)
+    response = client.get("/api/calls/export")
+    assert response.status_code == 200
+    assert "text/csv" in response.content_type
+    csv_text = response.data.decode()
+    assert "Caller 1" in csv_text
+    assert "started_at" in csv_text
