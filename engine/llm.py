@@ -24,7 +24,7 @@ class LLMClient:
             self._available = False
         return self._available
 
-    def chat(self, user_message, system_prompt="", history=None):
+    def chat(self, user_message, system_prompt="", history=None, tools=None):
         if not self.is_available():
             logger.warning("Ollama not available, returning fallback")
             return FALLBACK_RESPONSE
@@ -36,14 +36,20 @@ class LLMClient:
             if history:
                 messages.extend(history)
             messages.append({"role": "user", "content": user_message})
-            data = json.dumps({"model": self.model, "messages": messages, "stream": False}).encode()
+            body = {"model": self.model, "messages": messages, "stream": False}
+            if tools:
+                body["tools"] = tools
+            data = json.dumps(body).encode()
             req = urllib.request.Request(
                 f"{self.base_url}/api/chat", data=data,
                 headers={"Content-Type": "application/json"}, method="POST",
             )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 result = json.loads(resp.read())
-                return result["message"]["content"]
+                message = result["message"]
+                if message.get("tool_calls"):
+                    return message
+                return message["content"]
         except Exception as e:
             logger.error(f"LLM chat error: {e}")
             return FALLBACK_RESPONSE
