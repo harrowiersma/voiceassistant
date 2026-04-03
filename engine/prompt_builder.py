@@ -63,7 +63,7 @@ def get_active_vacation(db_path=None):
     conn = get_db_connection(db_path)
     row = conn.execute(
         """
-        SELECT rule_type, trigger_keywords, response, priority, active_from, active_until
+        SELECT id, rule_type, trigger_keywords, response, priority, active_from, active_until
         FROM knowledge_rules
         WHERE enabled = 1
           AND rule_type = 'vacation'
