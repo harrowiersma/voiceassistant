@@ -1,3 +1,6 @@
+import os
+import subprocess
+
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
 from app.helpers import get_config, set_config
 from config.defaults import SIP_DEFAULTS
@@ -14,6 +17,12 @@ SIP_FIELDS = [
     "sip.outbound_password",
     "sip.outbound_port",
     "sip.forward_number",
+    "sip.extension_1_name",
+    "sip.extension_1_password",
+    "sip.extension_2_name",
+    "sip.extension_2_password",
+    "sip.extension_3_name",
+    "sip.extension_3_password",
 ]
 
 
@@ -37,4 +46,37 @@ def save():
         value = request.form.get(key, "")
         set_config(key, value, "sip", db_path=db)
     flash("SIP settings saved.", "success")
+    return redirect(url_for("sip.index"))
+
+
+@bp.route("/sip/apply", methods=["POST"])
+def apply_config():
+    db = _db_path()
+    config_dir = current_app.config.get("ASTERISK_CONFIG_DIR", "/etc/asterisk")
+    config = {}
+    for key in SIP_FIELDS:
+        config[key] = get_config(key, default=SIP_DEFAULTS.get(key, ""), db_path=db)
+
+    from config.asterisk_gen import render_pjsip_conf, render_extensions_conf
+
+    try:
+        os.makedirs(config_dir, exist_ok=True)
+        with open(os.path.join(config_dir, "pjsip.conf"), "w") as f:
+            f.write(render_pjsip_conf(config))
+        with open(os.path.join(config_dir, "extensions.conf"), "w") as f:
+            f.write(render_extensions_conf(config))
+        try:
+            subprocess.run(
+                ["asterisk", "-rx", "core reload"],
+                capture_output=True,
+                timeout=5,
+            )
+            flash("Config applied and Asterisk reloaded.", "success")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            flash(
+                "Config files written. Asterisk reload will happen on Pi.",
+                "success",
+            )
+    except Exception as e:
+        flash(f"Error applying config: {e}", "error")
     return redirect(url_for("sip.index"))

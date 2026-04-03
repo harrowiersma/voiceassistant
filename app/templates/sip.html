@@ -63,6 +63,25 @@
         <input type="text" name="sip.forward_number" value="{{ values['sip.forward_number'] }}" placeholder="+31612345678">
     </label>
 
+    <h3>Internal Extensions</h3>
+    <p class="help-text">Register SIP phones on your local network. Calls forward to extensions first (free), then to your mobile via SIP trunk.</p>
+    {% for i in [1, 2, 3] %}
+    <div class="grid">
+        <label>
+            Extension {{ i }} Name
+            <input type="text" name="sip.extension_{{ i }}_name" value="{{ values['sip.extension_' ~ i ~ '_name'] }}" placeholder="desk-phone-{{ i }}">
+        </label>
+        <label>
+            Extension {{ i }} Password
+            <input type="password" name="sip.extension_{{ i }}_password" value="{{ values['sip.extension_' ~ i ~ '_password'] }}" placeholder="password">
+        </label>
+    </div>
+    {% endfor %}
+
     <button type="submit">Save SIP Settings</button>
+</form>
+
+<form method="post" action="{{ url_for('sip.apply_config') }}" style="margin-top: 1rem;">
+    <button type="submit" class="secondary">Apply to Asterisk</button>
 </form>
 {% endblock %}
