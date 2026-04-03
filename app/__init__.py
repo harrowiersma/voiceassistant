@@ -13,6 +13,8 @@ def create_app(test_config=None):
     os.makedirs(app.instance_path, exist_ok=True)
     init_db(app.config["DATABASE"])
 
+    from app.auth import bp as auth_bp
+    from app.auth import login_required_hook
     from app.routes.dashboard import bp as dashboard_bp
     from app.routes.sip import bp as sip_bp
     from app.routes.ai import bp as ai_bp
@@ -23,6 +25,9 @@ def create_app(test_config=None):
     from app.routes.actions import bp as actions_bp
     from app.routes.system import bp as system_bp
     from app.routes.api import bp as api_bp
+
+    app.register_blueprint(auth_bp)
+    app.before_request(login_required_hook)
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(sip_bp)

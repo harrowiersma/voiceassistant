@@ -1,6 +1,8 @@
 import sqlite3
 import os
 
+import bcrypt
+
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
 DEFAULT_DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "instance", "voice_secretary.db"
@@ -14,4 +16,15 @@ def init_db(db_path=None):
     conn = sqlite3.connect(db_path)
     with open(SCHEMA_PATH) as f:
         conn.executescript(f.read())
+
+    # Create default admin user if no users exist
+    cursor = conn.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] == 0:
+        pw_hash = bcrypt.hashpw(b"voicesec", bcrypt.gensalt()).decode()
+        conn.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            ("admin", pw_hash),
+        )
+        conn.commit()
+
     conn.close()
