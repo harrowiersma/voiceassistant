@@ -1,6 +1,6 @@
 """Assembles the LLM system prompt from persona config + active knowledge rules."""
 
-from datetime import date
+from datetime import date, datetime
 
 from app.helpers import get_config
 from db.connection import get_db_connection
@@ -76,3 +76,41 @@ def get_active_vacation(db_path=None):
     ).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def build_system_prompt_for_persona(persona_id, db_path=None):
+    """Build system prompt from a specific persona's settings + persona-scoped knowledge rules."""
+    conn = get_db_connection(db_path)
+    persona = conn.execute("SELECT * FROM personas WHERE id = ?", (persona_id,)).fetchone()
+    if not persona:
+        conn.close()
+        return build_system_prompt(db_path)  # Fall back to config-based prompt
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    rules = conn.execute(
+        """SELECT * FROM knowledge_rules
+           WHERE enabled = 1 AND (persona_id = ? OR persona_id IS NULL)
+             AND (active_from IS NULL OR active_from <= ?)
+             AND (active_until IS NULL OR active_until >= ?)
+           ORDER BY priority DESC, id""",
+        (persona_id, now, now),
+    ).fetchall()
+    conn.close()
+
+    greeting = persona["greeting"].replace("{company}", persona["company_name"])
+    prompt_parts = [
+        f"You are a virtual secretary for {persona['company_name']}.",
+        f"Personality: {persona['personality']}",
+        f"Greeting (say this first): {greeting}",
+        f"When the person is unavailable, say: {persona['unavailable_message']}",
+    ]
+    if rules:
+        prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
+        for rule in rules:
+            rule_dict = dict(rule)
+            rule_line = f"- [{rule_dict['rule_type'].upper()}]"
+            if rule_dict["trigger_keywords"]:
+                rule_line += f" When caller mentions: {rule_dict['trigger_keywords']}."
+            rule_line += f" {rule_dict['response']}"
+            prompt_parts.append(rule_line)
+    return "\n".join(prompt_parts)
