@@ -19,8 +19,26 @@ exten => _X.,1,NoOp(Outbound call to ${EXTEN} via inbound trunk)
  same => n,Hangup()
 {% endif %}
 
+[internal]
+; Internal extensions can dial each other and outbound
+exten => _X.,1,NoOp(Internal call to ${EXTEN})
+ same => n,Dial(PJSIP/${EXTEN})
+ same => n,Hangup()
+
 [forward]
-; Forward to configured number
-exten => s,1,NoOp(Forwarding call to {{ sip_forward_number }})
- same => n,Dial(PJSIP/{{ sip_forward_number }}@{% if sip_outbound_server %}outbound-endpoint{% else %}inbound-endpoint{% endif %})
+; Cascading forward: extensions -> SIP trunk -> AI message
+exten => s,1,NoOp(Forwarding call - cascading)
+{% if sip_extension_1_name %} same => n,Dial(PJSIP/{{ sip_extension_1_name }},15)
+{% endif %}
+{% if sip_extension_2_name %} same => n,Dial(PJSIP/{{ sip_extension_2_name }},15)
+{% endif %}
+{% if sip_extension_3_name %} same => n,Dial(PJSIP/{{ sip_extension_3_name }},15)
+{% endif %}
+{% if sip_forward_number %} same => n,Dial(PJSIP/{{ sip_forward_number }}@{% if sip_outbound_server %}outbound-endpoint{% else %}inbound-endpoint{% endif %},15)
+{% endif %}
+ same => n,Goto(ai-message,s,1)
+
+[ai-message]
+exten => s,1,NoOp(No answer - AI taking message)
+ same => n,AudioSocket(127.0.0.1:9092)
  same => n,Hangup()

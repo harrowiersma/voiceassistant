@@ -67,3 +67,72 @@ aors=outbound-aor
 from_user={{ sip_outbound_username }}
 from_domain={{ sip_outbound_server }}
 {% endif %}
+{% if sip_extension_1_name %}
+
+; ── Internal Extension: {{ sip_extension_1_name }} ───────────────────────
+[{{ sip_extension_1_name }}]
+type=endpoint
+transport=transport-udp
+context=internal
+disallow=all
+allow=ulaw
+allow=alaw
+auth={{ sip_extension_1_name }}-auth
+aors={{ sip_extension_1_name }}-aor
+
+[{{ sip_extension_1_name }}-auth]
+type=auth
+auth_type=userpass
+username={{ sip_extension_1_name }}
+password={{ sip_extension_1_password }}
+
+[{{ sip_extension_1_name }}-aor]
+type=aor
+max_contacts=1
+{% endif %}
+{% if sip_extension_2_name %}
+
+; ── Internal Extension: {{ sip_extension_2_name }} ───────────────────────
+[{{ sip_extension_2_name }}]
+type=endpoint
+transport=transport-udp
+context=internal
+disallow=all
+allow=ulaw
+allow=alaw
+auth={{ sip_extension_2_name }}-auth
+aors={{ sip_extension_2_name }}-aor
+
+[{{ sip_extension_2_name }}-auth]
+type=auth
+auth_type=userpass
+username={{ sip_extension_2_name }}
+password={{ sip_extension_2_password }}
+
+[{{ sip_extension_2_name }}-aor]
+type=aor
+max_contacts=1
+{% endif %}
+{% if sip_extension_3_name %}
+
+; ── Internal Extension: {{ sip_extension_3_name }} ───────────────────────
+[{{ sip_extension_3_name }}]
+type=endpoint
+transport=transport-udp
+context=internal
+disallow=all
+allow=ulaw
+allow=alaw
+auth={{ sip_extension_3_name }}-auth
+aors={{ sip_extension_3_name }}-aor
+
+[{{ sip_extension_3_name }}-auth]
+type=auth
+auth_type=userpass
+username={{ sip_extension_3_name }}
+password={{ sip_extension_3_password }}
+
+[{{ sip_extension_3_name }}-aor]
+type=aor
+max_contacts=1
+{% endif %}
