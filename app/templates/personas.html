@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block page_title %}Personas{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<p>Manage personas (departments/teams). Each persona has its own greeting, personality, calendar config, and inbound number for routing.</p>
+
+<details>
+    <summary role="button" class="outline">Add New Persona</summary>
+    <form method="post" action="{{ url_for('personas.add') }}">
+        <div class="grid">
+            <label>
+                Name
+                <input type="text" name="name" required placeholder="e.g. Sales Team">
+            </label>
+            <label>
+                Company Name
+                <input type="text" name="company_name" placeholder="e.g. Wiersma Sales">
+            </label>
+        </div>
+        <label>
+            Greeting
+            <textarea name="greeting" rows="2" placeholder="Hello, how may I help you?"></textarea>
+        </label>
+        <label>
+            Personality
+            <textarea name="personality" rows="2" placeholder="Professional and friendly."></textarea>
+        </label>
+        <label>
+            Unavailable Message
+            <textarea name="unavailable_message" rows="2" placeholder="They are not available right now."></textarea>
+        </label>
+        <div class="grid">
+            <label>
+                Calendar Type
+                <select name="calendar_type">
+                    <option value="none">None</option>
+                    <option value="msgraph">Microsoft Graph</option>
+                    <option value="google">Google Calendar</option>
+                </select>
+            </label>
+            <label>
+                Inbound Number
+                <input type="text" name="inbound_number" placeholder="+41441234567">
+            </label>
+        </div>
+        <button type="submit">Create Persona</button>
+    </form>
+</details>
+
+<figure>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Company</th>
+            <th>Calendar</th>
+            <th>Inbound Number</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in personas %}
+        <tr>
+            <td>
+                {{ p.name }}
+                {% if p.is_default %}
+                <mark>default</mark>
+                {% endif %}
+            </td>
+            <td>{{ p.company_name or '-' }}</td>
+            <td>{{ p.calendar_type or 'none' }}</td>
+            <td>{{ p.inbound_number or '-' }}</td>
+            <td>
+                <a href="{{ url_for('personas.edit', persona_id=p.id) }}" role="button" class="outline secondary">Edit</a>
+                {% if not p.is_default %}
+                <form method="post" action="{{ url_for('personas.delete', persona_id=p.id) }}" style="display:inline">
+                    <button type="submit" class="outline secondary" onclick="return confirm('Delete persona {{ p.name }}?')">Delete</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</figure>
+{% endblock %}

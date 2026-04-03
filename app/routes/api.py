@@ -180,6 +180,15 @@ def blocking_check():
     return jsonify({"blocked": False})
 
 
+@bp.route("/personas")
+def personas_list():
+    db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
+    conn = get_db_connection(db_path)
+    personas = conn.execute("SELECT * FROM personas WHERE enabled = 1 ORDER BY is_default DESC, name").fetchall()
+    conn.close()
+    return jsonify({"personas": [dict(p) for p in personas]})
+
+
 @bp.route("/knowledge/rules")
 def knowledge_rules():
     db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
