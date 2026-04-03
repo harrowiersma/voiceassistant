@@ -24,3 +24,16 @@ AI_DEFAULTS = {
     "ai.response_timeout": "10",
     "ai.max_call_duration": "300",
 }
+
+AVAILABILITY_DEFAULTS = {
+    "availability.manual_override": "auto",
+    "availability.business_hours_start": "09:00",
+    "availability.business_hours_end": "17:00",
+    "availability.action_available": "forward",
+    "availability.action_busy": "take_message",
+    "availability.action_dnd": "take_message",
+    "availability.action_away": "take_message",
+    "graph.client_id": "",
+    "graph.client_secret": "",
+    "graph.tenant_id": "",
+}
