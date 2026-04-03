@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block page_title %}Call Blocking{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('blocking.add') }}">
+    <h3>Add Blocking Rule</h3>
+    <div class="grid">
+        <label>
+            Number / Prefix
+            <input type="text" name="pattern" placeholder="+41791234567 or +234" required>
+        </label>
+        <label>
+            Block Type
+            <select name="block_type">
+                <option value="exact">Exact Match</option>
+                <option value="prefix">Prefix (Country/Area Code)</option>
+            </select>
+        </label>
+        <label>
+            Reason
+            <input type="text" name="reason" placeholder="Spam caller">
+        </label>
+    </div>
+    <button type="submit">Add Rule</button>
+</form>
+
+<h3>Blocked Numbers</h3>
+{% if rules %}
+<table>
+    <thead>
+        <tr>
+            <th>Pattern</th>
+            <th>Type</th>
+            <th>Reason</th>
+            <th>Added</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rule in rules %}
+        <tr>
+            <td>{{ rule.pattern }}</td>
+            <td>{{ rule.block_type }}</td>
+            <td>{{ rule.reason or '-' }}</td>
+            <td>{{ rule.created_at }}</td>
+            <td>
+                <form method="post" action="{{ url_for('blocking.delete', rule_id=rule.id) }}" style="margin:0">
+                    <button type="submit" class="outline secondary" style="padding:0.25rem 0.5rem">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No blocking rules configured. Calls from all numbers will be accepted.</p>
+{% endif %}
+{% endblock %}

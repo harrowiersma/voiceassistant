@@ -165,6 +165,21 @@ def calls_export():
     )
 
 
+@bp.route("/blocking/check")
+def blocking_check():
+    number = request.args.get("number", "")
+    db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
+    conn = get_db_connection(db_path)
+    rules = conn.execute("SELECT * FROM blocked_numbers").fetchall()
+    conn.close()
+    for rule in rules:
+        if rule["block_type"] == "exact" and rule["pattern"] == number:
+            return jsonify({"blocked": True, "reason": rule["reason"]})
+        elif rule["block_type"] == "prefix" and number.startswith(rule["pattern"]):
+            return jsonify({"blocked": True, "reason": rule["reason"]})
+    return jsonify({"blocked": False})
+
+
 @bp.route("/knowledge/rules")
 def knowledge_rules():
     db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")

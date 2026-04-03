@@ -23,6 +23,7 @@ def create_app(test_config=None):
     from app.routes.availability import bp as availability_bp
     from app.routes.calls import bp as calls_bp
     from app.routes.actions import bp as actions_bp
+    from app.routes.blocking import bp as blocking_bp
     from app.routes.system import bp as system_bp
     from app.routes.api import bp as api_bp
     from app.routes.backup import bp as backup_bp
@@ -38,6 +39,7 @@ def create_app(test_config=None):
     app.register_blueprint(availability_bp)
     app.register_blueprint(calls_bp)
     app.register_blueprint(actions_bp)
+    app.register_blueprint(blocking_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(backup_bp)
