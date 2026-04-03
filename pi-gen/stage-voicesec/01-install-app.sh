@@ -21,11 +21,8 @@ python3 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -r requirements.txt
 
-# Initialize the SQLite database
-if [ -f db/schema.sql ]; then
-    mkdir -p instance
-    sqlite3 instance/voice-secretary.db < db/schema.sql
-fi
+# Initialize the SQLite database (schema + default admin + default persona)
+.venv/bin/python -c "from db.init_db import init_db; init_db()"
 
 # Set ownership to the voicesec user
 chown -R voicesec:voicesec /opt/voice-secretary

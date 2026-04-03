@@ -8,3 +8,4 @@ cryptography==44.*
 pytest==8.3.*
 vosk==0.3.*
 msal==1.31.*
+google-api-python-client==2.149.*
