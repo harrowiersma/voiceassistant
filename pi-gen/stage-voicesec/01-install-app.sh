@@ -5,6 +5,9 @@
 install -d "${ROOTFS_DIR}/opt/voice-secretary"
 cp -r "${STAGE_DIR}/../../app" "${ROOTFS_DIR}/opt/voice-secretary/app"
 cp -r "${STAGE_DIR}/../../db" "${ROOTFS_DIR}/opt/voice-secretary/db"
+cp -r "${STAGE_DIR}/../../engine" "${ROOTFS_DIR}/opt/voice-secretary/engine"
+cp -r "${STAGE_DIR}/../../integrations" "${ROOTFS_DIR}/opt/voice-secretary/integrations"
+cp -r "${STAGE_DIR}/../../config" "${ROOTFS_DIR}/opt/voice-secretary/config"
 cp "${STAGE_DIR}/../../requirements.txt" "${ROOTFS_DIR}/opt/voice-secretary/requirements.txt"
 
 # Create venv, install dependencies, initialize DB — all inside chroot
