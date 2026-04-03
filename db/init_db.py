@@ -27,4 +27,14 @@ def init_db(db_path=None):
         )
         conn.commit()
 
+    # Create default persona if none exist
+    cursor = conn.execute("SELECT COUNT(*) FROM personas")
+    if cursor.fetchone()[0] == 0:
+        conn.execute(
+            "INSERT INTO personas (name, company_name, greeting, personality, unavailable_message, is_default, calendar_type) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("Default", "", "Hello, how may I help you?", "Professional and friendly.", "They are not available right now.", True, "none"),
+        )
+        conn.commit()
+
     conn.close()

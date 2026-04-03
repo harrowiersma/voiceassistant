@@ -5,6 +5,21 @@ CREATE TABLE IF NOT EXISTS config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS personas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    company_name TEXT NOT NULL DEFAULT '',
+    greeting TEXT NOT NULL DEFAULT 'Hello, how may I help you?',
+    personality TEXT NOT NULL DEFAULT 'Professional and friendly.',
+    unavailable_message TEXT NOT NULL DEFAULT 'They are not available right now.',
+    calendar_type TEXT DEFAULT 'none',
+    calendar_config TEXT,
+    inbound_number TEXT,
+    is_default BOOLEAN DEFAULT FALSE,
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS calls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TIMESTAMP NOT NULL,
@@ -20,7 +35,8 @@ CREATE TABLE IF NOT EXISTS calls (
     email_sent BOOLEAN DEFAULT FALSE,
     calendar_created BOOLEAN DEFAULT FALSE,
     callback_time TIMESTAMP,
-    notes TEXT
+    notes TEXT,
+    persona_id INTEGER REFERENCES personas(id)
 );
 
 CREATE TABLE IF NOT EXISTS knowledge_rules (
@@ -34,7 +50,8 @@ CREATE TABLE IF NOT EXISTS knowledge_rules (
     enabled BOOLEAN DEFAULT TRUE,
     tts_wav_path TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    persona_id INTEGER REFERENCES personas(id)
 );
 
 CREATE TABLE IF NOT EXISTS oauth_tokens (
