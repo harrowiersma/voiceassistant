@@ -3,6 +3,10 @@
 {% block page_title %}Home{% endblock %}
 
 {% block content %}
+<div id="live-call-indicator" style="display:none; padding: 1rem; background: var(--accent); border-radius: 8px; color: #fff; margin-bottom: 1rem;">
+    <strong>LIVE:</strong> <span id="live-call-info">No active calls</span>
+</div>
+
 <div class="card-grid"
      hx-get="/api/status"
      hx-trigger="load, every 10s"
