@@ -100,16 +100,18 @@ class CallSession:
             for t in self.transcript[:-1]
         ]
 
-        # Call LLM with tools
+        # Call LLM (no tool calling — Llama 3.2 1B doesn't support it reliably)
+        # The system prompt instructs the AI on the conversation flow instead.
         result = self.llm.chat(
             caller_text,
             system_prompt=self.system_prompt,
             history=history,
-            tools=TOOL_DEFINITIONS,
         )
 
-        # Handle tool calls
+        # The result is always a string (natural language response)
+        # Detect intent from the response text for call actions
         if isinstance(result, dict) and result.get("tool_calls"):
+            # In case a larger model does return tool calls
             tool_results = []
             for tc in result["tool_calls"]:
                 func = tc["function"]
