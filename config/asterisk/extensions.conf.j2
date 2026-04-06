@@ -2,7 +2,18 @@
 
 [inbound]
 ; Incoming calls routed to AudioSocket for AI processing
-exten => _X.,1,NoOp(Incoming call from ${CALLERID(num)})
+; Accept ANY extension (DID numbers, 's', anything DIDWW sends)
+exten => _X.,1,NoOp(Incoming call from ${CALLERID(num)} to ${EXTEN})
+ same => n,Answer()
+ same => n,AudioSocket(127.0.0.1:9092)
+ same => n,Hangup()
+
+exten => s,1,NoOp(Incoming call from ${CALLERID(num)} to s)
+ same => n,Answer()
+ same => n,AudioSocket(127.0.0.1:9092)
+ same => n,Hangup()
+
+exten => _+X.,1,NoOp(Incoming call from ${CALLERID(num)} to ${EXTEN})
  same => n,Answer()
  same => n,AudioSocket(127.0.0.1:9092)
  same => n,Hangup()

@@ -37,6 +37,15 @@ outbound_auth=inbound-auth
 aors=inbound-aor
 from_user={{ sip_inbound_username }}
 from_domain={{ sip_inbound_server }}
+
+; Match inbound calls from DIDWW by IP (they send from multiple server IPs)
+[inbound-identify]
+type=identify
+endpoint=inbound-endpoint
+match=185.238.173.0/24
+match=46.19.209.0/24
+match=46.19.210.0/24
+match=46.19.211.0/24
 {% if sip_outbound_server %}
 
 ; ── Outbound Trunk ─────────────────────────────────────────
