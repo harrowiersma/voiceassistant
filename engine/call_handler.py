@@ -73,6 +73,9 @@ def _rms(audio: bytes) -> float:
     return (sum(s * s for s in samples) / len(samples)) ** 0.5
 
 
+PIPER_BIN = "/opt/voice-secretary/.venv/bin/piper"
+
+
 def _synthesize_tts(text: str, db_path: str = None) -> bytes:
     """Synthesize text to 8kHz audio using Piper TTS. Returns raw PCM bytes."""
     voice = get_config("ai.tts_voice", default="en-us-amy-medium", db_path=db_path)
@@ -82,7 +85,7 @@ def _synthesize_tts(text: str, db_path: str = None) -> bytes:
     try:
         # Piper outputs 22050Hz by default, we need to convert to 8kHz
         result = subprocess.run(
-            ["piper", "--model", model_path, "--output_raw"],
+            [PIPER_BIN, "--model", model_path, "--output_raw"],
             input=text.encode(),
             capture_output=True,
             timeout=30,
@@ -105,7 +108,7 @@ def _synthesize_tts(text: str, db_path: str = None) -> bytes:
 
         return struct.pack(f"<{len(downsampled)}h", *downsampled)
     except FileNotFoundError:
-        logger.error("Piper binary not found — is piper-tts installed?")
+        logger.error(f"Piper binary not found at {PIPER_BIN} — is piper-tts installed?")
         return b""
     except subprocess.TimeoutExpired:
         logger.error("Piper TTS timed out")
