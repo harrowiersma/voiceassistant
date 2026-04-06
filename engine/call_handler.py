@@ -59,34 +59,41 @@ def _rms(audio: bytes) -> float:
 
 
 def _synthesize_tts_sync(text: str, db_path: str = None) -> bytes:
-    """Synthesize text to 8kHz signed-linear PCM via Piper + sox resampling."""
+    """Synthesize text to 8kHz signed-linear PCM via Piper WAV → sox resample."""
     voice = get_config("ai.tts_voice", default="en-us-amy-medium", db_path=db_path)
     model_path = f"{PIPER_MODEL_DIR}/{voice}.onnx"
     try:
-        # Piper → raw 22050Hz → sox resample to 8000Hz
-        # Pipeline: piper --output_raw | sox -t raw -r 22050 -b 16 -e signed -c 1 - -t raw -r 8000 -
-        piper_proc = subprocess.Popen(
-            [PIPER_BIN, "--model", model_path, "--output_raw"],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        sox_proc = subprocess.Popen(
-            ["sox", "-t", "raw", "-r", "22050", "-b", "16", "-e", "signed-integer",
-             "-c", "1", "-L", "-",  # input: raw 22050Hz 16-bit LE mono from stdin
-             "-t", "raw", "-r", "8000", "-b", "16", "-e", "signed-integer",
-             "-c", "1", "-L", "-"],  # output: raw 8000Hz 16-bit LE mono to stdout
-            stdin=piper_proc.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        piper_proc.stdin.write(text.encode())
-        piper_proc.stdin.close()
-        piper_proc.stdout.close()  # Allow sox to receive EOF when piper finishes
+        import tempfile, os
+        # Step 1: Piper → WAV file (22050Hz)
+        wav_fd, wav_path = tempfile.mkstemp(suffix=".wav")
+        os.close(wav_fd)
+        raw_fd, raw_path = tempfile.mkstemp(suffix=".raw")
+        os.close(raw_fd)
 
-        pcm_8k, sox_err = sox_proc.communicate(timeout=30)
-        piper_proc.wait(timeout=5)
+        try:
+            piper_result = subprocess.run(
+                [PIPER_BIN, "--model", model_path, "-f", wav_path],
+                input=text.encode(), capture_output=True, timeout=30,
+            )
+            if piper_result.returncode != 0:
+                logger.error(f"Piper failed: {piper_result.stderr.decode()[:200]}")
+                return b""
 
-        if sox_proc.returncode != 0:
-            logger.error(f"Sox failed: {sox_err.decode()[:200]}")
-            return b""
-        return pcm_8k
+            # Step 2: sox WAV → raw 8kHz slin (high quality resample)
+            sox_result = subprocess.run(
+                ["sox", wav_path, "-t", "raw", "-r", "8000", "-b", "16",
+                 "-e", "signed-integer", "-c", "1", "-L", raw_path],
+                capture_output=True, timeout=15,
+            )
+            if sox_result.returncode != 0:
+                logger.error(f"Sox failed: {sox_result.stderr.decode()[:200]}")
+                return b""
+
+            with open(raw_path, "rb") as f:
+                return f.read()
+        finally:
+            os.unlink(wav_path)
+            os.unlink(raw_path)
     except Exception as e:
         logger.error(f"TTS error: {e}")
         return b""

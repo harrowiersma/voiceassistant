@@ -44,7 +44,7 @@ class LLMClient:
                 f"{self.base_url}/api/chat", data=data,
                 headers={"Content-Type": "application/json"}, method="POST",
             )
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 result = json.loads(resp.read())
                 message = result["message"]
                 if message.get("tool_calls"):
