@@ -140,10 +140,9 @@ async def _send_tts_response(writer: asyncio.StreamWriter, text: str, db_path: s
         logger.warning("TTS produced no audio — caller hears silence")
 
 
-async def handle_call(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, call_uuid=None):
+async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """Handle one phone call: AudioSocket ↔ STT ↔ LLM ↔ TTS pipeline."""
     db_path = DEFAULT_DB_PATH
-    addr = writer.get_extra_info("peername")
     caller_number = "unknown"  # Will be set from Asterisk CDR or CALLERID
     started_at = datetime.now()
 
