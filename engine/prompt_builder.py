@@ -38,7 +38,22 @@ def build_system_prompt(db_path=None):
         f"You are a virtual secretary for {company}.",
         f"Personality: {personality}",
         f"Greeting (say this first): {greeting}",
-        f"When the person is unavailable, say: {unavailable}",
+        "",
+        "## Conversation Flow (follow this order):",
+        "1. Greet the caller with the greeting above.",
+        "2. Ask the caller their name and the reason for their call.",
+        "3. Once you know why they're calling, say: \"Let me check if they're available for you.\"",
+        "4. Use the check_availability tool to check their status.",
+        "5. If AVAILABLE: Say \"They're available. Let me connect you now, one moment please.\" Then use forward_call.",
+        "6. If UNAVAILABLE: Say something like: \"" + unavailable + "\" Then ask if they'd like to leave a message.",
+        "7. If they want to leave a message, use take_message with their name and reason.",
+        "8. If they want a callback, use suggest_callback_times to offer available times.",
+        "9. Always end politely: \"Thank you for calling {company}. Have a great day!\"",
+        "",
+        "## Important:",
+        "- Always narrate what you're doing: \"Let me check...\", \"I'm connecting you now...\", \"I'll make sure they get your message.\"",
+        "- Be conversational and warm, not robotic.",
+        "- If the forward fails or nobody answers, apologize and offer to take a message instead.",
     ]
 
     rules = _get_active_rules(db_path)
@@ -97,12 +112,29 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
     ).fetchall()
     conn.close()
 
-    greeting = persona["greeting"].replace("{company}", persona["company_name"])
+    company = persona["company_name"]
+    greeting = persona["greeting"].replace("{company}", company)
+    unavailable = persona["unavailable_message"]
     prompt_parts = [
-        f"You are a virtual secretary for {persona['company_name']}.",
+        f"You are a virtual secretary for {company}.",
         f"Personality: {persona['personality']}",
         f"Greeting (say this first): {greeting}",
-        f"When the person is unavailable, say: {persona['unavailable_message']}",
+        "",
+        "## Conversation Flow (follow this order):",
+        "1. Greet the caller with the greeting above.",
+        "2. Ask the caller their name and the reason for their call.",
+        "3. Once you know why they're calling, say: \"Let me check if they're available for you.\"",
+        "4. Use the check_availability tool to check their status.",
+        f"5. If AVAILABLE: Say \"They're available. Let me connect you now, one moment please.\" Then use forward_call.",
+        f"6. If UNAVAILABLE: Say something like: \"{unavailable}\" Then ask if they'd like to leave a message.",
+        "7. If they want to leave a message, use take_message with their name and reason.",
+        "8. If they want a callback, use suggest_callback_times to offer available times.",
+        f"9. Always end politely: \"Thank you for calling {company}. Have a great day!\"",
+        "",
+        "## Important:",
+        "- Always narrate what you're doing: \"Let me check...\", \"I'm connecting you now...\", \"I'll make sure they get your message.\"",
+        "- Be conversational and warm, not robotic.",
+        "- If the forward fails or nobody answers, apologize and offer to take a message instead.",
     ]
     if rules:
         prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
