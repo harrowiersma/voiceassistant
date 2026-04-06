@@ -1,13 +1,13 @@
-; Auto-generated rtp.conf — do not edit manually
-;
-; RTP and STUN/ICE configuration for NAT traversal
+; Auto-generated rtp.conf — RTP and NAT traversal
 
 [general]
 rtpstart=10000
 rtpend=20000
 {% if sip_stun_server %}
-; STUN server for NAT traversal (discovers public IP for RTP media)
 stunaddr={{ sip_stun_server }}
-; Enable ICE support for better NAT traversal
 icesupport=yes
 {% endif %}
+; Strict RTP helps with NAT — only accept RTP from the address that sends us packets
+strictrtp=yes
+; Probation period (number of packets before locking to a source)
+probation=4
