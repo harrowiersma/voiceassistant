@@ -20,3 +20,9 @@ def render_extensions_conf(config):
     """Render extensions.conf from a config dict with sip.* keys."""
     template = _env.get_template("extensions.conf.j2")
     return template.render(**_normalize_keys(config))
+
+
+def render_rtp_conf(config):
+    """Render rtp.conf with STUN/ICE settings for NAT traversal."""
+    template = _env.get_template("rtp.conf.j2")
+    return template.render(**_normalize_keys(config))

@@ -15,6 +15,7 @@ SIP_DEFAULTS = {
     "sip.outbound_password": "",
     "sip.outbound_port": "",
     "sip.forward_number": "",
+    "sip.stun_server": "",
     "sip.extension_1_name": "",
     "sip.extension_1_password": "",
     "sip.extension_2_name": "",

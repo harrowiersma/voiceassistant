@@ -17,6 +17,7 @@ SIP_FIELDS = [
     "sip.outbound_password",
     "sip.outbound_port",
     "sip.forward_number",
+    "sip.stun_server",
     "sip.extension_1_name",
     "sip.extension_1_password",
     "sip.extension_2_name",
@@ -57,7 +58,7 @@ def apply_config():
     for key in SIP_FIELDS:
         config[key] = get_config(key, default=SIP_DEFAULTS.get(key, ""), db_path=db)
 
-    from config.asterisk_gen import render_pjsip_conf, render_extensions_conf
+    from config.asterisk_gen import render_pjsip_conf, render_extensions_conf, render_rtp_conf
 
     try:
         os.makedirs(config_dir, exist_ok=True)
@@ -65,6 +66,8 @@ def apply_config():
             f.write(render_pjsip_conf(config))
         with open(os.path.join(config_dir, "extensions.conf"), "w") as f:
             f.write(render_extensions_conf(config))
+        with open(os.path.join(config_dir, "rtp.conf"), "w") as f:
+            f.write(render_rtp_conf(config))
         try:
             subprocess.run(
                 ["asterisk", "-rx", "core reload"],

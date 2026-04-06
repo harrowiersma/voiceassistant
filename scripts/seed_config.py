@@ -31,6 +31,7 @@ CONFIG_MAP = {
     "SIP_OUTBOUND_PORT": ("sip.outbound_port", "sip"),
     "SIP_OUTBOUND_USERNAME": ("sip.outbound_username", "sip"),
     "SIP_OUTBOUND_PASSWORD": ("sip.outbound_password", "sip"),
+    "SIP_STUN_SERVER": ("sip.stun_server", "sip"),
     "SIP_FORWARD_NUMBER": ("sip.forward_number", "sip"),
     "SIP_EXTENSION_1_NAME": ("sip.extension_1_name", "sip"),
     "SIP_EXTENSION_1_PASSWORD": ("sip.extension_1_password", "sip"),

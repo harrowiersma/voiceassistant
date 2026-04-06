@@ -1,0 +1,13 @@
+; Auto-generated rtp.conf — do not edit manually
+;
+; RTP and STUN/ICE configuration for NAT traversal
+
+[general]
+rtpstart=10000
+rtpend=20000
+{% if sip_stun_server %}
+; STUN server for NAT traversal (discovers public IP for RTP media)
+stunaddr={{ sip_stun_server }}
+; Enable ICE support for better NAT traversal
+icesupport=yes
+{% endif %}
