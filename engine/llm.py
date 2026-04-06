@@ -36,7 +36,15 @@ class LLMClient:
             if history:
                 messages.extend(history)
             messages.append({"role": "user", "content": user_message})
-            body = {"model": self.model, "messages": messages, "stream": False}
+            body = {
+                "model": self.model,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "num_predict": 80,  # Max ~2 sentences (keep responses short for phone)
+                    "temperature": 0.7,
+                },
+            }
             if tools:
                 body["tools"] = tools
             data = json.dumps(body).encode()

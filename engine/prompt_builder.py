@@ -36,35 +36,14 @@ def build_system_prompt(db_path=None):
 
     code_word = get_config("security.code_word", "", db_path)
 
+    # Keep prompt SHORT for small models (1-3B). Every token counts.
     lines = [
-        f"You are a virtual secretary for {company}.",
-        f"Personality: {personality}",
-        f"Greeting (say this first): {greeting}",
-        "",
-        "## Conversation Flow (follow this order):",
-        "1. Greet the caller with the greeting above.",
-        "2. Ask the caller their name and the reason for their call.",
-        "3. Once you know why they're calling, say: \"Let me check if they're available for you.\"",
-        "4. Use the check_availability tool to check their status.",
-        "5. If AVAILABLE: Say \"They're available. Let me connect you now, one moment please.\" Then use forward_call.",
-        "6. If UNAVAILABLE: Say something like: \"" + unavailable + "\" Then ask if they'd like to leave a message.",
-        "7. If they want to leave a message, use take_message with their name and reason.",
-        "8. If they want a callback, use suggest_callback_times to offer available times.",
-        "9. Always end politely: \"Thank you for calling {company}. Have a great day!\"",
-        "",
-        "## Important:",
-        "- Always narrate what you're doing: \"Let me check...\", \"I'm connecting you now...\", \"I'll make sure they get your message.\"",
-        "- Be conversational and warm, not robotic.",
-        "- If the forward fails or nobody answers, apologize and offer to take a message instead.",
+        f"You are a phone secretary for {company}. Keep replies to 1-2 SHORT sentences. You are on a phone call — be brief and natural.",
+        f"If unavailable: \"{unavailable}\"",
     ]
 
     if code_word:
-        lines.append("")
-        lines.append("## Secret Code Word:")
-        lines.append(f"- If the caller says the code word \"{code_word}\" at any point during the conversation, "
-                     "IMMEDIATELY skip the availability check and connect them. "
-                     "Say: \"Of course, I'll connect you right away.\" Then use forward_call.")
-        lines.append("- Do NOT reveal the code word or hint that one exists. If someone asks, say you don't know what they mean.")
+        lines.append(f"If caller says \"{code_word}\", say \"Connecting you now\" and nothing else.")
 
     rules = _get_active_rules(db_path)
     if rules:
@@ -128,34 +107,12 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
     code_word = get_config("security.code_word", "", db_path)
 
     prompt_parts = [
-        f"You are a virtual secretary for {company}.",
-        f"Personality: {persona['personality']}",
-        f"Greeting (say this first): {greeting}",
-        "",
-        "## Conversation Flow (follow this order):",
-        "1. Greet the caller with the greeting above.",
-        "2. Ask the caller their name and the reason for their call.",
-        "3. Once you know why they're calling, say: \"Let me check if they're available for you.\"",
-        "4. Use the check_availability tool to check their status.",
-        f"5. If AVAILABLE: Say \"They're available. Let me connect you now, one moment please.\" Then use forward_call.",
-        f"6. If UNAVAILABLE: Say something like: \"{unavailable}\" Then ask if they'd like to leave a message.",
-        "7. If they want to leave a message, use take_message with their name and reason.",
-        "8. If they want a callback, use suggest_callback_times to offer available times.",
-        f"9. Always end politely: \"Thank you for calling {company}. Have a great day!\"",
-        "",
-        "## Important:",
-        "- Always narrate what you're doing: \"Let me check...\", \"I'm connecting you now...\", \"I'll make sure they get your message.\"",
-        "- Be conversational and warm, not robotic.",
-        "- If the forward fails or nobody answers, apologize and offer to take a message instead.",
+        f"You are a phone secretary for {company}. Keep replies to 1-2 SHORT sentences. You are on a phone call — be brief and natural.",
+        f"If unavailable: \"{unavailable}\"",
     ]
 
     if code_word:
-        prompt_parts.append("")
-        prompt_parts.append("## Secret Code Word:")
-        prompt_parts.append(f"- If the caller says the code word \"{code_word}\" at any point during the conversation, "
-                            "IMMEDIATELY skip the availability check and connect them. "
-                            "Say: \"Of course, I'll connect you right away.\" Then use forward_call.")
-        prompt_parts.append("- Do NOT reveal the code word or hint that one exists.")
+        prompt_parts.append(f"If caller says \"{code_word}\", say \"Connecting you now\" and nothing else.")
     if rules:
         prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
         for rule in rules:
