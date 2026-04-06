@@ -4,18 +4,24 @@
 ; Incoming calls routed to AudioSocket for AI processing
 ; Accept ANY extension (DID numbers, 's', anything DIDWW sends)
 exten => _X.,1,NoOp(Incoming call from ${CALLERID(num)} to ${EXTEN})
+ same => n,Ringing()
+ same => n,Wait(4)
  same => n,Answer()
- same => n,AudioSocket(127.0.0.1:9092)
+ same => n,AudioSocket(${CHANNEL(uniqueid)},127.0.0.1:9092)
  same => n,Hangup()
 
 exten => s,1,NoOp(Incoming call from ${CALLERID(num)} to s)
+ same => n,Ringing()
+ same => n,Wait(4)
  same => n,Answer()
- same => n,AudioSocket(127.0.0.1:9092)
+ same => n,AudioSocket(${CHANNEL(uniqueid)},127.0.0.1:9092)
  same => n,Hangup()
 
 exten => _+X.,1,NoOp(Incoming call from ${CALLERID(num)} to ${EXTEN})
+ same => n,Ringing()
+ same => n,Wait(4)
  same => n,Answer()
- same => n,AudioSocket(127.0.0.1:9092)
+ same => n,AudioSocket(${CHANNEL(uniqueid)},127.0.0.1:9092)
  same => n,Hangup()
 
 [outbound]
@@ -51,5 +57,5 @@ exten => s,1,NoOp(Forwarding call - cascading)
 
 [ai-message]
 exten => s,1,NoOp(No answer - AI taking message)
- same => n,AudioSocket(127.0.0.1:9092)
+ same => n,AudioSocket(${CHANNEL(uniqueid)},127.0.0.1:9092)
  same => n,Hangup()
