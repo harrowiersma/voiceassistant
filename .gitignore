@@ -5,3 +5,4 @@ instance/
 *.db
 *.wav
 .env
+.DS_Store

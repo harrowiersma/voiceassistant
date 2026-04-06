@@ -9,7 +9,12 @@ install:
 	python3 -m venv $(VENV)
 	$(PIP) install -r requirements.txt
 	$(PYTHON) -c "from db.init_db import init_db; init_db()"
-	@echo "Install complete. Run: make run"
+	@echo "Install complete. Run: make seed && make run"
+
+seed:
+	@test -f .env || (echo "Error: .env file not found. Copy .env.example to .env and fill in your values." && exit 1)
+	$(PYTHON) scripts/seed_config.py
+	@echo "Config seeded. Run: make run"
 
 run:
 	$(PYTHON) -m app
