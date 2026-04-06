@@ -13,6 +13,8 @@ transport=transport-udp
 outbound_auth=inbound-auth
 server_uri=sip:{{ sip_inbound_server }}:{{ sip_inbound_port }}
 client_uri=sip:{{ sip_inbound_username }}@{{ sip_inbound_server }}:{{ sip_inbound_port }}
+endpoint=inbound-endpoint
+line=yes
 
 [inbound-auth]
 type=auth
@@ -35,16 +37,6 @@ outbound_auth=inbound-auth
 aors=inbound-aor
 from_user={{ sip_inbound_username }}
 from_domain={{ sip_inbound_server }}
-
-; Identify inbound calls from DIDWW by IP — accept ALL calls from their servers
-[inbound-identify]
-type=identify
-endpoint=inbound-endpoint
-match=46.19.209.0/24
-match=46.19.210.0/24
-match=46.19.211.0/24
-match=185.location.0.0/16
-match={{ sip_inbound_server }}
 {% if sip_outbound_server %}
 
 ; ── Outbound Trunk ─────────────────────────────────────────
