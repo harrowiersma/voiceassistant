@@ -59,24 +59,34 @@ def _rms(audio: bytes) -> float:
 
 
 def _synthesize_tts_sync(text: str, db_path: str = None) -> bytes:
-    """Synthesize text to 8kHz signed-linear PCM via Piper. Blocking."""
+    """Synthesize text to 8kHz signed-linear PCM via Piper + sox resampling."""
     voice = get_config("ai.tts_voice", default="en-us-amy-medium", db_path=db_path)
     model_path = f"{PIPER_MODEL_DIR}/{voice}.onnx"
     try:
-        result = subprocess.run(
+        # Piper → raw 22050Hz → sox resample to 8000Hz
+        # Pipeline: piper --output_raw | sox -t raw -r 22050 -b 16 -e signed -c 1 - -t raw -r 8000 -
+        piper_proc = subprocess.Popen(
             [PIPER_BIN, "--model", model_path, "--output_raw"],
-            input=text.encode(), capture_output=True, timeout=30,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
-        if result.returncode != 0:
-            logger.error(f"Piper failed: {result.stderr.decode()[:200]}")
+        sox_proc = subprocess.Popen(
+            ["sox", "-t", "raw", "-r", "22050", "-b", "16", "-e", "signed-integer",
+             "-c", "1", "-L", "-",  # input: raw 22050Hz 16-bit LE mono from stdin
+             "-t", "raw", "-r", "8000", "-b", "16", "-e", "signed-integer",
+             "-c", "1", "-L", "-"],  # output: raw 8000Hz 16-bit LE mono to stdout
+            stdin=piper_proc.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        piper_proc.stdin.write(text.encode())
+        piper_proc.stdin.close()
+        piper_proc.stdout.close()  # Allow sox to receive EOF when piper finishes
+
+        pcm_8k, sox_err = sox_proc.communicate(timeout=30)
+        piper_proc.wait(timeout=5)
+
+        if sox_proc.returncode != 0:
+            logger.error(f"Sox failed: {sox_err.decode()[:200]}")
             return b""
-        raw = result.stdout
-        if len(raw) < 4:
-            return b""
-        samples = struct.unpack(f"<{len(raw) // 2}h", raw)
-        ratio = 22050 / 8000
-        down = [samples[int(i * ratio)] for i in range(int(len(samples) / ratio)) if int(i * ratio) < len(samples)]
-        return struct.pack(f"<{len(down)}h", *down)
+        return pcm_8k
     except Exception as e:
         logger.error(f"TTS error: {e}")
         return b""
