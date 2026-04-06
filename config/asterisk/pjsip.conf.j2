@@ -37,6 +37,8 @@ outbound_auth=inbound-auth
 aors=inbound-aor
 from_user={{ sip_inbound_username }}
 from_domain={{ sip_inbound_server }}
+direct_media=no
+rtp_symmetric=yes
 
 ; Match inbound calls from DIDWW by IP (they send from multiple server IPs)
 [inbound-identify]
