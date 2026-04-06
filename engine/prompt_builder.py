@@ -36,14 +36,19 @@ def build_system_prompt(db_path=None):
 
     code_word = get_config("security.code_word", "", db_path)
 
-    # Keep prompt SHORT for small models (1-3B). Every token counts.
+    # Keep prompt SHORT for small models. Every token = latency on Pi.
     lines = [
-        f"You are a phone secretary for {company}. Keep replies to 1-2 SHORT sentences. You are on a phone call — be brief and natural.",
-        f"If unavailable: \"{unavailable}\"",
+        f"You are a phone secretary for {company}. This is a live phone call.",
+        "RULES: Reply in 1-2 short sentences only. Be warm and professional.",
+        "FLOW: Ask caller's name and reason. Then say you'll check availability. Then take a message or say goodbye.",
+        f"When unavailable say: {unavailable}",
+        "Never make up information. Never pretend to do things you cannot do.",
+        "Do NOT use actions, emojis, stage directions, or narration like '(I press a button)'. Just speak naturally.",
     ]
 
     if code_word:
-        lines.append(f"If caller says \"{code_word}\", say \"Connecting you now\" and nothing else.")
+        lines.append(f"If caller says \"{code_word}\", say \"Connecting you now.\"")
+
 
     rules = _get_active_rules(db_path)
     if rules:
@@ -107,12 +112,17 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
     code_word = get_config("security.code_word", "", db_path)
 
     prompt_parts = [
-        f"You are a phone secretary for {company}. Keep replies to 1-2 SHORT sentences. You are on a phone call — be brief and natural.",
-        f"If unavailable: \"{unavailable}\"",
+        f"You are a phone secretary for {company}. This is a live phone call.",
+        "RULES: Reply in 1-2 short sentences only. Be warm and professional.",
+        "FLOW: Ask caller's name and reason. Then say you'll check availability. Then take a message or say goodbye.",
+        f"When unavailable say: {unavailable}",
+        "Never make up information. Never pretend to do things you cannot do.",
+        "Do NOT use actions, emojis, stage directions, or narration. Just speak naturally.",
     ]
 
     if code_word:
-        prompt_parts.append(f"If caller says \"{code_word}\", say \"Connecting you now\" and nothing else.")
+        prompt_parts.append(f"If caller says \"{code_word}\", say \"Connecting you now.\"")
+
     if rules:
         prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
         for rule in rules:
