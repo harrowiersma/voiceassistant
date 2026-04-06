@@ -146,7 +146,7 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
     caller_number = "unknown"  # Will be set from Asterisk CDR or CALLERID
     started_at = datetime.now()
 
-    logger.info(f"Call started: {call_uuid} from {addr}")
+    logger.info(f"Call started: {call_uuid}")
 
     # Resolve persona by inbound number (default for now)
     persona = resolve_persona(caller_number, db_path)
