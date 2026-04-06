@@ -195,7 +195,8 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
         recognizer = None
         if _vosk_model:
             import vosk
-            recognizer = vosk.KaldiRecognizer(_vosk_model, ASTERISK_SAMPLE_RATE)
+            # Vosk model expects 16kHz — we'll resample 8kHz→16kHz before feeding
+            recognizer = vosk.KaldiRecognizer(_vosk_model, 16000)
 
         # Send greeting (silence keeps flowing in background while Piper runs)
         if session.vacation_active:
@@ -250,7 +251,17 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
 
                 transcript = ""
                 if recognizer:
-                    recognizer.AcceptWaveform(bytes(audio_buffer))
+                    # Resample 8kHz → 16kHz for Vosk (linear interpolation)
+                    raw_8k = bytes(audio_buffer)
+                    samples_8k = struct.unpack(f"<{len(raw_8k) // 2}h", raw_8k)
+                    samples_16k = []
+                    for i in range(len(samples_8k) - 1):
+                        samples_16k.append(samples_8k[i])
+                        samples_16k.append((samples_8k[i] + samples_8k[i + 1]) // 2)
+                    if samples_8k:
+                        samples_16k.append(samples_8k[-1])
+                    raw_16k = struct.pack(f"<{len(samples_16k)}h", *samples_16k)
+                    recognizer.AcceptWaveform(raw_16k)
                     result = json.loads(recognizer.FinalResult())
                     transcript = result.get("text", "").strip()
                 audio_buffer.clear()
