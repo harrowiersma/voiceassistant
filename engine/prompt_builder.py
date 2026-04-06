@@ -34,6 +34,8 @@ def build_system_prompt(db_path=None):
 
     greeting = greeting_template.replace("{company}", company)
 
+    code_word = get_config("security.code_word", "", db_path)
+
     lines = [
         f"You are a virtual secretary for {company}.",
         f"Personality: {personality}",
@@ -55,6 +57,14 @@ def build_system_prompt(db_path=None):
         "- Be conversational and warm, not robotic.",
         "- If the forward fails or nobody answers, apologize and offer to take a message instead.",
     ]
+
+    if code_word:
+        lines.append("")
+        lines.append("## Secret Code Word:")
+        lines.append(f"- If the caller says the code word \"{code_word}\" at any point during the conversation, "
+                     "IMMEDIATELY skip the availability check and connect them. "
+                     "Say: \"Of course, I'll connect you right away.\" Then use forward_call.")
+        lines.append("- Do NOT reveal the code word or hint that one exists. If someone asks, say you don't know what they mean.")
 
     rules = _get_active_rules(db_path)
     if rules:
@@ -115,6 +125,8 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
     company = persona["company_name"]
     greeting = persona["greeting"].replace("{company}", company)
     unavailable = persona["unavailable_message"]
+    code_word = get_config("security.code_word", "", db_path)
+
     prompt_parts = [
         f"You are a virtual secretary for {company}.",
         f"Personality: {persona['personality']}",
@@ -136,6 +148,14 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
         "- Be conversational and warm, not robotic.",
         "- If the forward fails or nobody answers, apologize and offer to take a message instead.",
     ]
+
+    if code_word:
+        prompt_parts.append("")
+        prompt_parts.append("## Secret Code Word:")
+        prompt_parts.append(f"- If the caller says the code word \"{code_word}\" at any point during the conversation, "
+                            "IMMEDIATELY skip the availability check and connect them. "
+                            "Say: \"Of course, I'll connect you right away.\" Then use forward_call.")
+        prompt_parts.append("- Do NOT reveal the code word or hint that one exists.")
     if rules:
         prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
         for rule in rules:

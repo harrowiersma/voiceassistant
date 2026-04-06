@@ -88,6 +88,13 @@
         </tbody>
     </table>
 
+    <h3>Secret Code Word</h3>
+    <label>
+        Code Word
+        <input type="text" name="security.code_word" value="{{ values['security.code_word'] }}" placeholder="e.g. butterfly">
+        <small>When a caller says this word, they are immediately connected — bypassing the availability check. Leave empty to disable.</small>
+    </label>
+
     <h3>MS Graph Setup</h3>
     <p class="help-text">Register an app in Azure Active Directory to connect Teams presence. You will need the Client ID, Client Secret, and Tenant ID from your Azure App Registration.</p>
     <label>

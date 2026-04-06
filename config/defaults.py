@@ -50,6 +50,7 @@ AVAILABILITY_DEFAULTS = {
     "availability.action_busy": "take_message",
     "availability.action_dnd": "take_message",
     "availability.action_away": "take_message",
+    "security.code_word": "",
     "graph.client_id": "",
     "graph.client_secret": "",
     "graph.tenant_id": "",

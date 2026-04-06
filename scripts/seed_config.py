@@ -56,6 +56,8 @@ CONFIG_MAP = {
     "EMAIL_FROM": ("actions.email_from", "actions"),
     "EMAIL_TO": ("actions.email_to", "actions"),
     "NOTIFY_ON": ("actions.notify_on", "actions"),
+    # Secret code word
+    "SECRET_CODE_WORD": ("security.code_word", "security"),
     # Availability
     "AVAILABILITY_MANUAL_OVERRIDE": ("availability.manual_override", "availability"),
     "AVAILABILITY_BUSINESS_HOURS_START": ("availability.business_hours_start", "availability"),
