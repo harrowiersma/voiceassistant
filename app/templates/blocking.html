@@ -11,27 +11,33 @@
 {% endif %}
 {% endwith %}
 
-<form method="post" action="{{ url_for('blocking.add') }}">
-    <h3>Add Blocking Rule</h3>
-    <div class="grid">
-        <label>
-            Number / Prefix
-            <input type="text" name="pattern" placeholder="+41791234567 or +234" required>
-        </label>
-        <label>
-            Block Type
-            <select name="block_type">
-                <option value="exact">Exact Match</option>
-                <option value="prefix">Prefix (Country/Area Code)</option>
-            </select>
-        </label>
-        <label>
-            Reason
-            <input type="text" name="reason" placeholder="Spam caller">
-        </label>
+<p class="page-description">Block unwanted callers by exact number or country/area code prefix.</p>
+
+<details>
+    <summary role="button" class="outline">Add Blocking Rule</summary>
+    <div class="form-section">
+        <form method="post" action="{{ url_for('blocking.add') }}">
+            <div class="grid">
+                <label>
+                    Number / Prefix
+                    <input type="text" name="pattern" placeholder="+41791234567 or +234" required>
+                </label>
+                <label>
+                    Block Type
+                    <select name="block_type">
+                        <option value="exact">Exact Match</option>
+                        <option value="prefix">Prefix (Country/Area Code)</option>
+                    </select>
+                </label>
+                <label>
+                    Reason
+                    <input type="text" name="reason" placeholder="Spam caller">
+                </label>
+            </div>
+            <button type="submit">Add Rule</button>
+        </form>
     </div>
-    <button type="submit">Add Rule</button>
-</form>
+</details>
 
 <h3>Blocked Numbers</h3>
 {% if rules %}
@@ -48,13 +54,13 @@
     <tbody>
         {% for rule in rules %}
         <tr>
-            <td>{{ rule.pattern }}</td>
+            <td><strong>{{ rule.pattern }}</strong></td>
             <td>{{ rule.block_type }}</td>
             <td>{{ rule.reason or '-' }}</td>
             <td>{{ rule.created_at }}</td>
             <td>
                 <form method="post" action="{{ url_for('blocking.delete', rule_id=rule.id) }}" class="inline-form">
-                    <button type="submit" class="outline secondary btn-sm">Delete</button>
+                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Remove blocking rule for {{ rule.pattern }}?')">Delete</button>
                 </form>
             </td>
         </tr>
@@ -62,6 +68,10 @@
     </tbody>
 </table>
 {% else %}
-<p>No blocking rules configured. Calls from all numbers will be accepted.</p>
+<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+    <p>No blocking rules configured.</p>
+    <p>Calls from all numbers will be accepted.</p>
+</div>
 {% endif %}
 {% endblock %}

@@ -5,64 +5,74 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
 {% endwith %}
 
-<form method="post" action="{{ url_for('personas.edit', persona_id=persona.id) }}">
-    <div class="grid">
-        <label>
-            Name
-            <input type="text" name="name" value="{{ persona.name }}" required>
-        </label>
-        <label>
-            Company Name
-            <input type="text" name="company_name" value="{{ persona.company_name or '' }}">
-        </label>
-    </div>
+<div class="edit-form">
+    <form method="post" action="{{ url_for('personas.edit', persona_id=persona.id) }}">
+        <div class="form-section">
+            <h3>Identity</h3>
+            <div class="grid">
+                <label>
+                    Name
+                    <input type="text" name="name" value="{{ persona.name }}" required>
+                </label>
+                <label>
+                    Company Name
+                    <input type="text" name="company_name" value="{{ persona.company_name or '' }}">
+                </label>
+            </div>
+        </div>
 
-    <label>
-        Greeting
-        <textarea name="greeting" rows="3">{{ persona.greeting or '' }}</textarea>
-    </label>
+        <div class="form-section">
+            <h3>Conversation</h3>
+            <label>
+                Greeting
+                <textarea name="greeting" rows="3">{{ persona.greeting or '' }}</textarea>
+            </label>
+            <label>
+                Personality
+                <textarea name="personality" rows="4">{{ persona.personality or '' }}</textarea>
+            </label>
+            <label>
+                Unavailable Message
+                <textarea name="unavailable_message" rows="3">{{ persona.unavailable_message or '' }}</textarea>
+            </label>
+        </div>
 
-    <label>
-        Personality
-        <textarea name="personality" rows="4">{{ persona.personality or '' }}</textarea>
-    </label>
+        <div class="form-section">
+            <h3>Telephony</h3>
+            <div class="grid">
+                <label>
+                    Inbound Number
+                    <input type="text" name="inbound_number" value="{{ persona.inbound_number or '' }}" placeholder="+41445514582">
+                </label>
+                <label>
+                    Timezone <small>(auto-detected from number if empty)</small>
+                    <input type="text" name="timezone" value="{{ persona.timezone or '' }}" placeholder="Europe/Zurich">
+                </label>
+            </div>
+        </div>
 
-    <label>
-        Unavailable Message
-        <textarea name="unavailable_message" rows="3">{{ persona.unavailable_message or '' }}</textarea>
-    </label>
+        <div class="form-section">
+            <h3>Calendar</h3>
+            <label>
+                Calendar Type
+                <select name="calendar_type">
+                    <option value="none" {% if persona.calendar_type == 'none' %}selected{% endif %}>None</option>
+                    <option value="msgraph" {% if persona.calendar_type == 'msgraph' %}selected{% endif %}>Microsoft Graph</option>
+                    <option value="google" {% if persona.calendar_type == 'google' %}selected{% endif %}>Google Calendar</option>
+                </select>
+            </label>
+        </div>
 
-    <div class="grid">
-        <label>
-            Inbound Number
-            <input type="text" name="inbound_number" value="{{ persona.inbound_number or '' }}" placeholder="+41445514582">
-        </label>
-        <label>
-            Timezone <small>(auto-detected from number if empty)</small>
-            <input type="text" name="timezone" value="{{ persona.timezone or '' }}" placeholder="Europe/Zurich">
-        </label>
-    </div>
-
-    <div class="grid">
-        <label>
-            Calendar Type
-            <select name="calendar_type">
-                <option value="none" {% if persona.calendar_type == 'none' %}selected{% endif %}>None</option>
-                <option value="msgraph" {% if persona.calendar_type == 'msgraph' %}selected{% endif %}>Microsoft Graph</option>
-                <option value="google" {% if persona.calendar_type == 'google' %}selected{% endif %}>Google Calendar</option>
-            </select>
-        </label>
-    </div>
-
-    <div class="grid">
-        <button type="submit">Save Changes</button>
-        <a href="{{ url_for('personas.index') }}" role="button" class="outline secondary">Cancel</a>
-    </div>
-</form>
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <a href="{{ url_for('personas.index') }}" role="button" class="outline secondary">Cancel</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

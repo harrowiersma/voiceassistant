@@ -5,56 +5,69 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
 {% endwith %}
 
-<form method="post" action="{{ url_for('actions.save') }}">
+<p class="page-description">Configure email notifications and SMTP settings for call summaries.</p>
 
-    <h3>SMTP Settings</h3>
-    <div class="grid">
-        <label>
-            SMTP Server
-            <input type="text" name="actions.smtp_server" value="{{ values['actions.smtp_server'] }}" placeholder="smtp.gmail.com">
-        </label>
-        <label>
-            SMTP Port
-            <input type="number" name="actions.smtp_port" value="{{ values['actions.smtp_port'] }}" placeholder="587">
-        </label>
-        <label>
-            SMTP Username
-            <input type="text" name="actions.smtp_username" value="{{ values['actions.smtp_username'] }}" placeholder="user@gmail.com">
-        </label>
-        <label>
-            SMTP Password
-            <input type="password" name="actions.smtp_password" value="{{ values['actions.smtp_password'] }}">
-        </label>
-    </div>
+<div class="edit-form">
+    <form method="post" action="{{ url_for('actions.save') }}">
+        <div class="form-section">
+            <h3>SMTP Settings</h3>
+            <div class="grid">
+                <label>
+                    SMTP Server
+                    <input type="text" name="actions.smtp_server" value="{{ values['actions.smtp_server'] }}" placeholder="smtp.gmail.com">
+                </label>
+                <label>
+                    SMTP Port
+                    <input type="number" name="actions.smtp_port" value="{{ values['actions.smtp_port'] }}" placeholder="587">
+                </label>
+            </div>
+            <div class="grid">
+                <label>
+                    SMTP Username
+                    <input type="text" name="actions.smtp_username" value="{{ values['actions.smtp_username'] }}" placeholder="user@gmail.com">
+                </label>
+                <label>
+                    SMTP Password
+                    <input type="password" name="actions.smtp_password" value="{{ values['actions.smtp_password'] }}">
+                </label>
+            </div>
+        </div>
 
-    <h3>Recipients</h3>
-    <div class="grid">
-        <label>
-            Send Summaries To
-            <input type="email" name="actions.email_to" value="{{ values['actions.email_to'] }}" placeholder="owner@gmail.com">
-        </label>
-        <label>
-            Sender Address
-            <input type="email" name="actions.email_from" value="{{ values['actions.email_from'] }}" placeholder="secretary@gmail.com">
-        </label>
-    </div>
+        <div class="form-section">
+            <h3>Recipients</h3>
+            <div class="grid">
+                <label>
+                    Send Summaries To
+                    <input type="email" name="actions.email_to" value="{{ values['actions.email_to'] }}" placeholder="owner@gmail.com">
+                </label>
+                <label>
+                    Sender Address
+                    <input type="email" name="actions.email_from" value="{{ values['actions.email_from'] }}" placeholder="secretary@gmail.com">
+                </label>
+            </div>
+        </div>
 
-    <h3>Notification Preferences</h3>
-    <label>
-        Notify On
-        <select name="actions.notify_on">
-            <option value="all_calls" {{ 'selected' if values['actions.notify_on'] == 'all_calls' }}>All Calls</option>
-            <option value="message_only" {{ 'selected' if values['actions.notify_on'] == 'message_only' }}>Message Only</option>
-            <option value="never" {{ 'selected' if values['actions.notify_on'] == 'never' }}>Never</option>
-        </select>
-    </label>
+        <div class="form-section">
+            <h3>Notification Preferences</h3>
+            <label>
+                Notify On
+                <select name="actions.notify_on">
+                    <option value="all_calls" {{ 'selected' if values['actions.notify_on'] == 'all_calls' }}>All Calls</option>
+                    <option value="message_only" {{ 'selected' if values['actions.notify_on'] == 'message_only' }}>Message Only</option>
+                    <option value="never" {{ 'selected' if values['actions.notify_on'] == 'never' }}>Never</option>
+                </select>
+            </label>
+        </div>
 
-    <button type="submit">Save Actions Settings</button>
-</form>
+        <div class="form-actions">
+            <button type="submit">Save Actions Settings</button>
+        </div>
+    </form>
+</div>
 {% endblock %}

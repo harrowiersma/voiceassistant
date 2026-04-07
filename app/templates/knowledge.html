@@ -11,57 +11,61 @@
 {% endif %}
 {% endwith %}
 
+<p class="page-description">Rules that tell the AI how to respond to specific topics, redirects, and custom scenarios.</p>
+
 <details>
     <summary role="button" class="outline">Add Rule</summary>
-    <form method="post" action="{{ url_for('knowledge.add') }}">
-        <label>
-            Rule Type
-            <select name="rule_type" required>
-                <option value="topic">Topic</option>
-                <option value="redirect">Redirect</option>
-                <option value="vacation">Vacation</option>
-                <option value="info">Info</option>
-                <option value="custom">Custom</option>
-            </select>
-        </label>
-
-        <label>
-            Trigger Keywords
-            <input type="text" name="trigger_keywords" placeholder="comma-separated keywords">
-        </label>
-
-        <label>
-            Response <em>(required)</em>
-            <textarea name="response" rows="3" required placeholder="The response the AI should give..."></textarea>
-        </label>
-
-        <label>
-            Persona
-            <select name="persona_id">
-                <option value="">All Personas (global)</option>
-                {% for persona in personas %}
-                <option value="{{ persona['id'] }}">{{ persona['name'] }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <div class="grid">
+    <div class="form-section">
+        <form method="post" action="{{ url_for('knowledge.add') }}">
             <label>
-                Active From
-                <input type="date" name="active_from">
+                Rule Type
+                <select name="rule_type" required>
+                    <option value="topic">Topic</option>
+                    <option value="redirect">Redirect</option>
+                    <option value="vacation">Vacation</option>
+                    <option value="info">Info</option>
+                    <option value="custom">Custom</option>
+                </select>
             </label>
-            <label>
-                Active Until
-                <input type="date" name="active_until">
-            </label>
-            <label>
-                Priority
-                <input type="number" name="priority" value="0" min="0">
-            </label>
-        </div>
 
-        <button type="submit">Save Rule</button>
-    </form>
+            <label>
+                Trigger Keywords
+                <input type="text" name="trigger_keywords" placeholder="comma-separated keywords">
+            </label>
+
+            <label>
+                Response <em>(required)</em>
+                <textarea name="response" rows="3" required placeholder="The response the AI should give..."></textarea>
+            </label>
+
+            <label>
+                Persona
+                <select name="persona_id">
+                    <option value="">All Personas (global)</option>
+                    {% for persona in personas %}
+                    <option value="{{ persona['id'] }}">{{ persona['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div class="grid">
+                <label>
+                    Active From
+                    <input type="date" name="active_from">
+                </label>
+                <label>
+                    Active Until
+                    <input type="date" name="active_until">
+                </label>
+                <label>
+                    Priority
+                    <input type="number" name="priority" value="0" min="0">
+                </label>
+            </div>
+
+            <button type="submit">Save Rule</button>
+        </form>
+    </div>
 </details>
 
 {% if rules %}
@@ -74,7 +78,7 @@
             <th scope="col">Response</th>
             <th scope="col">Date Range</th>
             <th scope="col">Priority</th>
-            <th scope="col">Actions</th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
@@ -100,7 +104,7 @@
             <td>{{ rule['priority'] }}</td>
             <td>
                 <form method="post" action="{{ url_for('knowledge.delete', rule_id=rule['id']) }}" class="inline-form">
-                    <button type="submit" class="outline secondary btn-sm">Delete</button>
+                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Delete this rule?')">Delete</button>
                 </form>
             </td>
         </tr>
@@ -109,7 +113,9 @@
 </table>
 {% else %}
 <div class="empty-state">
-    <p>No knowledge rules yet. Add your first rule above.</p>
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    <p>No knowledge rules yet.</p>
+    <p>Add rules to teach the AI how to handle specific topics and scenarios.</p>
 </div>
 {% endif %}
 {% endblock %}

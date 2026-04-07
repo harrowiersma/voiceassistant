@@ -11,105 +11,121 @@
 {% endif %}
 {% endwith %}
 
-<form method="post" action="{{ url_for('availability.save') }}">
+<p class="page-description">Control how calls are handled based on your Teams presence, business hours, and manual overrides.</p>
 
-    <h3>Manual Override</h3>
-    <label>
-        Override Mode
-        <select name="availability.manual_override">
-            <option value="auto" {{ 'selected' if values['availability.manual_override'] == 'auto' }}>Auto (use Teams presence)</option>
-            <option value="available" {{ 'selected' if values['availability.manual_override'] == 'available' }}>Available (always forward)</option>
-            <option value="unavailable" {{ 'selected' if values['availability.manual_override'] == 'unavailable' }}>Unavailable (always take message)</option>
-        </select>
-    </label>
+<div class="edit-form">
+    <form method="post" action="{{ url_for('availability.save') }}">
+        <div class="form-section">
+            <h3>Manual Override</h3>
+            <label>
+                Override Mode
+                <select name="availability.manual_override">
+                    <option value="auto" {{ 'selected' if values['availability.manual_override'] == 'auto' }}>Auto (use Teams presence)</option>
+                    <option value="available" {{ 'selected' if values['availability.manual_override'] == 'available' }}>Available (always forward)</option>
+                    <option value="unavailable" {{ 'selected' if values['availability.manual_override'] == 'unavailable' }}>Unavailable (always take message)</option>
+                </select>
+            </label>
+        </div>
 
-    <h3>Business Hours</h3>
-    <p class="help-text">Calls outside these hours go to voicemail.</p>
-    <div class="grid">
-        <label>
-            Start Time
-            <input type="time" name="availability.business_hours_start" value="{{ values['availability.business_hours_start'] }}">
-        </label>
-        <label>
-            End Time
-            <input type="time" name="availability.business_hours_end" value="{{ values['availability.business_hours_end'] }}">
-        </label>
-    </div>
+        <div class="form-section">
+            <h3>Business Hours</h3>
+            <p class="help-text">Calls outside these hours go to voicemail.</p>
+            <div class="grid">
+                <label>
+                    Start Time
+                    <input type="time" name="availability.business_hours_start" value="{{ values['availability.business_hours_start'] }}">
+                </label>
+                <label>
+                    End Time
+                    <input type="time" name="availability.business_hours_end" value="{{ values['availability.business_hours_end'] }}">
+                </label>
+            </div>
+        </div>
 
-    <h3>Presence Mapping</h3>
-    <table>
-        <thead>
-            <tr>
-                <th scope="col">Teams Status</th>
-                <th scope="col">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Available</td>
-                <td>
-                    <select name="availability.action_available">
-                        <option value="forward" {{ 'selected' if values['availability.action_available'] == 'forward' }}>Forward</option>
-                        <option value="take_message" {{ 'selected' if values['availability.action_available'] == 'take_message' }}>Take Message</option>
-                        <option value="voicemail" {{ 'selected' if values['availability.action_available'] == 'voicemail' }}>Voicemail</option>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <td>Busy</td>
-                <td>
-                    <select name="availability.action_busy">
-                        <option value="forward" {{ 'selected' if values['availability.action_busy'] == 'forward' }}>Forward</option>
-                        <option value="take_message" {{ 'selected' if values['availability.action_busy'] == 'take_message' }}>Take Message</option>
-                        <option value="voicemail" {{ 'selected' if values['availability.action_busy'] == 'voicemail' }}>Voicemail</option>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <td>Do Not Disturb</td>
-                <td>
-                    <select name="availability.action_dnd">
-                        <option value="forward" {{ 'selected' if values['availability.action_dnd'] == 'forward' }}>Forward</option>
-                        <option value="take_message" {{ 'selected' if values['availability.action_dnd'] == 'take_message' }}>Take Message</option>
-                        <option value="voicemail" {{ 'selected' if values['availability.action_dnd'] == 'voicemail' }}>Voicemail</option>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <td>Away</td>
-                <td>
-                    <select name="availability.action_away">
-                        <option value="forward" {{ 'selected' if values['availability.action_away'] == 'forward' }}>Forward</option>
-                        <option value="take_message" {{ 'selected' if values['availability.action_away'] == 'take_message' }}>Take Message</option>
-                        <option value="voicemail" {{ 'selected' if values['availability.action_away'] == 'voicemail' }}>Voicemail</option>
-                    </select>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+        <div class="form-section">
+            <h3>Presence Mapping</h3>
+            <p class="help-text">Choose what happens when your Teams status is each of these states.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Teams Status</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Available</td>
+                        <td>
+                            <select name="availability.action_available">
+                                <option value="forward" {{ 'selected' if values['availability.action_available'] == 'forward' }}>Forward</option>
+                                <option value="take_message" {{ 'selected' if values['availability.action_available'] == 'take_message' }}>Take Message</option>
+                                <option value="voicemail" {{ 'selected' if values['availability.action_available'] == 'voicemail' }}>Voicemail</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Busy</td>
+                        <td>
+                            <select name="availability.action_busy">
+                                <option value="forward" {{ 'selected' if values['availability.action_busy'] == 'forward' }}>Forward</option>
+                                <option value="take_message" {{ 'selected' if values['availability.action_busy'] == 'take_message' }}>Take Message</option>
+                                <option value="voicemail" {{ 'selected' if values['availability.action_busy'] == 'voicemail' }}>Voicemail</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Do Not Disturb</td>
+                        <td>
+                            <select name="availability.action_dnd">
+                                <option value="forward" {{ 'selected' if values['availability.action_dnd'] == 'forward' }}>Forward</option>
+                                <option value="take_message" {{ 'selected' if values['availability.action_dnd'] == 'take_message' }}>Take Message</option>
+                                <option value="voicemail" {{ 'selected' if values['availability.action_dnd'] == 'voicemail' }}>Voicemail</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Away</td>
+                        <td>
+                            <select name="availability.action_away">
+                                <option value="forward" {{ 'selected' if values['availability.action_away'] == 'forward' }}>Forward</option>
+                                <option value="take_message" {{ 'selected' if values['availability.action_away'] == 'take_message' }}>Take Message</option>
+                                <option value="voicemail" {{ 'selected' if values['availability.action_away'] == 'voicemail' }}>Voicemail</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-    <h3>Secret Code Word</h3>
-    <label>
-        Code Word
-        <input type="text" name="security.code_word" value="{{ values['security.code_word'] }}" placeholder="e.g. butterfly">
-        <small>When a caller says this word, they are immediately connected — bypassing the availability check. Leave empty to disable.</small>
-    </label>
+        <div class="form-section">
+            <h3>Secret Code Word</h3>
+            <label>
+                Code Word
+                <input type="text" name="security.code_word" value="{{ values['security.code_word'] }}" placeholder="e.g. butterfly">
+            </label>
+            <p class="help-text">When a caller says this word, they are immediately connected, bypassing the availability check. Leave empty to disable.</p>
+        </div>
 
-    <h3>MS Graph Setup</h3>
-    <p class="help-text">Register an app in Azure Active Directory to connect Teams presence. You will need the Client ID, Client Secret, and Tenant ID from your Azure App Registration.</p>
-    <label>
-        Client ID
-        <input type="text" name="graph.client_id" value="{{ values['graph.client_id'] }}">
-    </label>
-    <label>
-        Client Secret
-        <input type="password" name="graph.client_secret" value="{{ values['graph.client_secret'] }}">
-    </label>
-    <label>
-        Tenant ID
-        <input type="text" name="graph.tenant_id" value="{{ values['graph.tenant_id'] }}">
-    </label>
+        <div class="form-section">
+            <h3>MS Graph Setup</h3>
+            <p class="help-text">Register an app in Azure Active Directory to connect Teams presence. You need the Client ID, Client Secret, and Tenant ID from your Azure App Registration.</p>
+            <label>
+                Client ID
+                <input type="text" name="graph.client_id" value="{{ values['graph.client_id'] }}">
+            </label>
+            <label>
+                Client Secret
+                <input type="password" name="graph.client_secret" value="{{ values['graph.client_secret'] }}">
+            </label>
+            <label>
+                Tenant ID
+                <input type="text" name="graph.tenant_id" value="{{ values['graph.tenant_id'] }}">
+            </label>
+        </div>
 
-    <button type="submit">Save Availability Settings</button>
-</form>
+        <div class="form-actions">
+            <button type="submit">Save Availability Settings</button>
+        </div>
+    </form>
+</div>
 {% endblock %}

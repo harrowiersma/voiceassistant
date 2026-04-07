@@ -5,63 +5,76 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
 {% endwith %}
 
-<form method="post" action="{{ url_for('ai.save') }}">
+<p class="page-description">Configure the AI pipeline: speech recognition, language model, and text-to-speech voice.</p>
 
-    <h3>Speech-to-Text</h3>
-    <label>
-        STT Model
-        <select name="ai.stt_model">
-            <option value="vosk-small" {{ 'selected' if values['ai.stt_model'] == 'vosk-small' }}>vosk-small</option>
-            <option value="vosk-large" {{ 'selected' if values['ai.stt_model'] == 'vosk-large' }}>vosk-large</option>
-        </select>
-    </label>
+<div class="edit-form">
+    <form method="post" action="{{ url_for('ai.save') }}">
+        <div class="form-section">
+            <h3>Speech-to-Text</h3>
+            <label>
+                STT Model
+                <select name="ai.stt_model">
+                    <option value="vosk-small" {{ 'selected' if values['ai.stt_model'] == 'vosk-small' }}>vosk-small</option>
+                    <option value="vosk-large" {{ 'selected' if values['ai.stt_model'] == 'vosk-large' }}>vosk-large</option>
+                </select>
+            </label>
+        </div>
 
-    <h3>Language Model</h3>
-    <label>
-        LLM Model (Ollama)
-        <select name="ai.llm_model">
-            {% for model in ollama_models %}
-            <option value="{{ model }}" {{ 'selected' if values['ai.llm_model'] == model }}>{{ model }}</option>
-            {% endfor %}
-            {% if values['ai.llm_model'] not in ollama_models %}
-            <option value="{{ values['ai.llm_model'] }}" selected>{{ values['ai.llm_model'] }} (not found)</option>
-            {% endif %}
-        </select>
-    </label>
-    <small>Models installed on Ollama. Run <code>ollama pull &lt;model&gt;</code> on the Pi to add more.</small>
+        <div class="form-section">
+            <h3>Language Model</h3>
+            <label>
+                LLM Model (Ollama)
+                <select name="ai.llm_model">
+                    {% for model in ollama_models %}
+                    <option value="{{ model }}" {{ 'selected' if values['ai.llm_model'] == model }}>{{ model }}</option>
+                    {% endfor %}
+                    {% if values['ai.llm_model'] not in ollama_models %}
+                    <option value="{{ values['ai.llm_model'] }}" selected>{{ values['ai.llm_model'] }} (not found)</option>
+                    {% endif %}
+                </select>
+            </label>
+            <p class="help-text">Models installed on Ollama. Run <code>ollama pull &lt;model&gt;</code> on the Pi to add more.</p>
+        </div>
 
-    <h3>Text-to-Speech</h3>
-    <label>
-        TTS Voice (Piper)
-        <select name="ai.tts_voice">
-            {% for voice in piper_voices %}
-            <option value="{{ voice }}" {{ 'selected' if values['ai.tts_voice'] == voice }}>{{ voice }}</option>
-            {% endfor %}
-            {% if values['ai.tts_voice'] not in piper_voices %}
-            <option value="{{ values['ai.tts_voice'] }}" selected>{{ values['ai.tts_voice'] }} (not found)</option>
-            {% endif %}
-        </select>
-    </label>
-    <small>Voices in <code>/opt/voice-secretary/models/piper/</code>. Download more from <a href="https://huggingface.co/rhasspy/piper-voices" target="_blank">Piper Voices</a>.</small>
+        <div class="form-section">
+            <h3>Text-to-Speech</h3>
+            <label>
+                TTS Voice (Piper)
+                <select name="ai.tts_voice">
+                    {% for voice in piper_voices %}
+                    <option value="{{ voice }}" {{ 'selected' if values['ai.tts_voice'] == voice }}>{{ voice }}</option>
+                    {% endfor %}
+                    {% if values['ai.tts_voice'] not in piper_voices %}
+                    <option value="{{ values['ai.tts_voice'] }}" selected>{{ values['ai.tts_voice'] }} (not found)</option>
+                    {% endif %}
+                </select>
+            </label>
+            <p class="help-text">Voices in <code>/opt/voice-secretary/models/piper/</code>. Download more from <a href="https://huggingface.co/rhasspy/piper-voices" target="_blank">Piper Voices</a>.</p>
+        </div>
 
-    <h3>Timeouts</h3>
-    <div class="grid">
-        <label>
-            Response Timeout (seconds)
-            <input type="number" name="ai.response_timeout" value="{{ values['ai.response_timeout'] }}" min="5" max="30">
-        </label>
-        <label>
-            Max Call Duration (seconds)
-            <input type="number" name="ai.max_call_duration" value="{{ values['ai.max_call_duration'] }}" min="60" max="600">
-        </label>
-    </div>
+        <div class="form-section">
+            <h3>Timeouts</h3>
+            <div class="grid">
+                <label>
+                    Response Timeout (seconds)
+                    <input type="number" name="ai.response_timeout" value="{{ values['ai.response_timeout'] }}" min="5" max="30">
+                </label>
+                <label>
+                    Max Call Duration (seconds)
+                    <input type="number" name="ai.max_call_duration" value="{{ values['ai.max_call_duration'] }}" min="60" max="600">
+                </label>
+            </div>
+        </div>
 
-    <button type="submit">Save AI Settings</button>
-</form>
+        <div class="form-actions">
+            <button type="submit">Save AI Settings</button>
+        </div>
+    </form>
+</div>
 {% endblock %}

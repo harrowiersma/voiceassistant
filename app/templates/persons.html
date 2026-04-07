@@ -11,55 +11,57 @@
 {% endif %}
 {% endwith %}
 
-<p>Manage team members. Each person can have their own calendar and forwarding number. When a caller asks for a specific person, the AI checks their calendar and forwards accordingly.</p>
+<p class="page-description">Manage team members. Each person can have their own calendar and forwarding number. When a caller asks for a specific person, the AI checks their calendar and forwards accordingly.</p>
 
 <details>
     <summary role="button" class="outline">Add New Person</summary>
-    <form method="post" action="{{ url_for('persons.add') }}">
-        <div class="grid">
+    <div class="form-section">
+        <form method="post" action="{{ url_for('persons.add') }}">
+            <div class="grid">
+                <label>
+                    Name
+                    <input type="text" name="name" required placeholder="e.g. Harro Wiersma">
+                </label>
+                <label>
+                    Aliases (comma-separated)
+                    <input type="text" name="aliases" placeholder="e.g. Harro, Mr Wiersma">
+                </label>
+            </div>
+            <div class="grid">
+                <label>
+                    Persona (Company)
+                    <select name="persona_id" required>
+                        {% for p in personas %}
+                        <option value="{{ p.id }}">{{ p.name }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Forward Number
+                    <input type="text" name="forward_number" placeholder="+351924878258">
+                </label>
+            </div>
+            <div class="grid">
+                <label>
+                    Calendar Type
+                    <select name="calendar_type">
+                        <option value="none">None</option>
+                        <option value="msgraph">Microsoft Graph (Teams)</option>
+                        <option value="google">Google Calendar</option>
+                    </select>
+                </label>
+                <label>
+                    Email
+                    <input type="email" name="email" placeholder="harro@xappo.mt">
+                </label>
+            </div>
             <label>
-                Name
-                <input type="text" name="name" required placeholder="e.g. Harro Wiersma">
+                <input type="checkbox" name="is_owner" value="1">
+                Owner / primary contact (receives forwarded calls by default)
             </label>
-            <label>
-                Aliases (comma-separated)
-                <input type="text" name="aliases" placeholder="e.g. Harro, Mr Wiersma">
-            </label>
-        </div>
-        <div class="grid">
-            <label>
-                Persona (Company)
-                <select name="persona_id" required>
-                    {% for p in personas %}
-                    <option value="{{ p.id }}">{{ p.name }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>
-                Forward Number
-                <input type="text" name="forward_number" placeholder="+351924878258">
-            </label>
-        </div>
-        <div class="grid">
-            <label>
-                Calendar Type
-                <select name="calendar_type">
-                    <option value="none">None</option>
-                    <option value="msgraph">Microsoft Graph (Teams)</option>
-                    <option value="google">Google Calendar</option>
-                </select>
-            </label>
-            <label>
-                Email
-                <input type="email" name="email" placeholder="harro@xappo.mt">
-            </label>
-        </div>
-        <label>
-            <input type="checkbox" name="is_owner" value="1">
-            Owner / primary contact (receives forwarded calls by default)
-        </label>
-        <button type="submit">Add Person</button>
-    </form>
+            <button type="submit">Add Person</button>
+        </form>
+    </div>
 </details>
 
 <h3>Team Members</h3>
@@ -69,22 +71,21 @@
     <thead>
         <tr>
             <th scope="col">Name</th>
-            <th scope="col">Aliases</th>
             <th scope="col">Company</th>
-            <th scope="col">Forward Number</th>
+            <th scope="col">Forward</th>
             <th scope="col">Calendar</th>
-            <th scope="col">Actions</th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
         {% for p in persons %}
         <tr>
             <td>
-                {{ p.name }}
+                <strong>{{ p.name }}</strong>
                 {% if p.is_owner %}<mark>owner</mark>{% endif %}
+                {% if p.aliases %}<br><small>{{ p.aliases }}</small>{% endif %}
             </td>
-            <td>{{ p.aliases or '-' }}</td>
-            <td>{{ p.persona_name or '-' }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</td>
+            <td>{{ p.persona_name or '-' }}{% if p.company_name %}<br><small>{{ p.company_name }}</small>{% endif %}</td>
             <td>{{ p.forward_number or '-' }}</td>
             <td>{{ p.calendar_type or 'none' }}</td>
             <td>
@@ -99,6 +100,10 @@
 </table>
 </figure>
 {% else %}
-<p>No team members configured. Add people so the AI can check their calendar and forward calls to them.</p>
+<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <p>No team members configured.</p>
+    <p>Add people so the AI can check their calendar and forward calls to them.</p>
+</div>
 {% endif %}
 {% endblock %}

@@ -11,49 +11,51 @@
 {% endif %}
 {% endwith %}
 
-<p>Manage personas (departments/teams). Each persona has its own greeting, personality, calendar config, and inbound number for routing.</p>
+<p class="page-description">Manage personas (departments/teams). Each persona has its own greeting, personality, calendar config, and inbound number for routing.</p>
 
 <details>
     <summary role="button" class="outline">Add New Persona</summary>
-    <form method="post" action="{{ url_for('personas.add') }}">
-        <div class="grid">
+    <div class="form-section">
+        <form method="post" action="{{ url_for('personas.add') }}">
+            <div class="grid">
+                <label>
+                    Name
+                    <input type="text" name="name" required placeholder="e.g. Sales Team">
+                </label>
+                <label>
+                    Company Name
+                    <input type="text" name="company_name" placeholder="e.g. Wiersma Sales">
+                </label>
+            </div>
             <label>
-                Name
-                <input type="text" name="name" required placeholder="e.g. Sales Team">
+                Greeting
+                <textarea name="greeting" rows="2" placeholder="Hello, how may I help you?"></textarea>
             </label>
             <label>
-                Company Name
-                <input type="text" name="company_name" placeholder="e.g. Wiersma Sales">
-            </label>
-        </div>
-        <label>
-            Greeting
-            <textarea name="greeting" rows="2" placeholder="Hello, how may I help you?"></textarea>
-        </label>
-        <label>
-            Personality
-            <textarea name="personality" rows="2" placeholder="Professional and friendly."></textarea>
-        </label>
-        <label>
-            Unavailable Message
-            <textarea name="unavailable_message" rows="2" placeholder="They are not available right now."></textarea>
-        </label>
-        <div class="grid">
-            <label>
-                Calendar Type
-                <select name="calendar_type">
-                    <option value="none">None</option>
-                    <option value="msgraph">Microsoft Graph</option>
-                    <option value="google">Google Calendar</option>
-                </select>
+                Personality
+                <textarea name="personality" rows="2" placeholder="Professional and friendly."></textarea>
             </label>
             <label>
-                Inbound Number
-                <input type="text" name="inbound_number" placeholder="+41441234567">
+                Unavailable Message
+                <textarea name="unavailable_message" rows="2" placeholder="They are not available right now."></textarea>
             </label>
-        </div>
-        <button type="submit">Create Persona</button>
-    </form>
+            <div class="grid">
+                <label>
+                    Calendar Type
+                    <select name="calendar_type">
+                        <option value="none">None</option>
+                        <option value="msgraph">Microsoft Graph</option>
+                        <option value="google">Google Calendar</option>
+                    </select>
+                </label>
+                <label>
+                    Inbound Number
+                    <input type="text" name="inbound_number" placeholder="+41441234567">
+                </label>
+            </div>
+            <button type="submit">Create Persona</button>
+        </form>
+    </div>
 </details>
 
 {% if personas %}
@@ -65,17 +67,15 @@
             <th scope="col">Company</th>
             <th scope="col">Calendar</th>
             <th scope="col">Inbound Number</th>
-            <th scope="col">Actions</th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
         {% for p in personas %}
         <tr>
             <td>
-                {{ p.name }}
-                {% if p.is_default %}
-                <mark>default</mark>
-                {% endif %}
+                <strong>{{ p.name }}</strong>
+                {% if p.is_default %}<mark>default</mark>{% endif %}
             </td>
             <td>{{ p.company_name or '-' }}</td>
             <td>{{ p.calendar_type or 'none' }}</td>
