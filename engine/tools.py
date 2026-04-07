@@ -160,12 +160,17 @@ def _handle_check_availability(arguments, db_path=None, mock_presence=None,
             else:
                 statuses.append("not_configured")
 
-    # Merge: worst status wins (busy > dnd > away > available)
-    priority = ["busy", "dnd", "away", "offline", "unknown", "not_configured", "available"]
-    merged = "available"
-    for s in statuses:
-        if priority.index(s) < priority.index(merged) if s in priority else False:
-            merged = s
+    # Merge: worst REAL status wins. Ignore not_configured/unknown sources.
+    # If all sources are not_configured, default to available (don't block calls).
+    priority = ["busy", "dnd", "away", "offline", "available"]
+    real_statuses = [s for s in statuses if s in priority]
+    if not real_statuses:
+        merged = "available"  # all sources are not_configured/unknown — let the call through
+    else:
+        merged = "available"
+        for s in real_statuses:
+            if priority.index(s) < priority.index(merged):
+                merged = s
 
     return {
         "status": merged,

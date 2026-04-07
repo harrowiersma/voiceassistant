@@ -706,12 +706,9 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                         # Person is unavailable — take a message
                         status = avail.get("status", "unavailable")
                         logger.info(f"{display_name} is {status} — taking message")
-                        unavail_msg = session.persona.get("unavailable_message", "They are not available right now.").replace("{company}", session.persona.get("company_name", "")) if session.persona else "They are not available right now."
-                        phrase = f"I'm sorry, {display_name} is not available right now. {unavail_msg}"
+                        phrase = f"I'm sorry, {display_name} is not available at the moment. Would you like to leave a message?"
                         await bridge.synthesize_and_play(phrase, db_path)
                         session.transcript.append({"role": "assistant", "text": phrase})
-                        await _play_cached_or_synth(bridge, "Would you like to leave a message?", db_path)
-                        session.transcript.append({"role": "assistant", "text": "Would you like to leave a message?"})
                         # Continue the loop — LLM handles the message-taking conversation
 
                 session.transcript.append({"role": "user", "text": transcript})
