@@ -148,7 +148,9 @@ def _handle_check_availability(arguments, db_path=None, mock_presence=None,
         if cal == "msgraph":
             from integrations.msgraph import MSGraphClient
             client = MSGraphClient(db_path=db_path)
-            statuses.append(client.check_presence())
+            # Use person's email for per-user presence check (app permissions)
+            email = person.get("email") if person else None
+            statuses.append(client.check_presence(email=email))
         elif cal == "google":
             from integrations.google_calendar import GoogleCalendarClient
             pid = person.get("id", 0) if person else 0
