@@ -663,17 +663,57 @@ button.btn-sm {
     width: auto !important;
 }
 
+/* ===== Global Button Override (Pico CSS makes buttons huge) ===== */
+button[type="submit"],
+.form-actions button,
+.form-actions a[role="button"],
+.form-section button[type="submit"] {
+    width: auto !important;
+    padding: 0.5rem 1.5rem !important;
+    font-size: var(--text-base) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 0 !important;
+    cursor: pointer;
+}
+
+/* Primary buttons: teal accent */
+button[type="submit"]:not(.outline):not(.secondary) {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+}
+button[type="submit"]:not(.outline):not(.secondary):hover {
+    background: #0d8a7e !important;
+    border-color: #0d8a7e !important;
+}
+
+/* Secondary / outline buttons */
+button.secondary,
+a[role="button"].secondary,
+a[role="button"].outline {
+    width: auto !important;
+    padding: 0.5rem 1.5rem !important;
+    font-size: var(--text-base) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+/* Standalone link-buttons (outside tables) */
+.form-section a[role="button"],
+.empty-state a[role="button"] {
+    display: inline-block !important;
+    width: auto !important;
+    padding: 0.5rem 1.5rem !important;
+    font-size: var(--text-base) !important;
+}
+
 /* Form button row (Save / Cancel) */
 .form-actions {
     display: flex;
     gap: var(--space-sm);
     align-items: center;
-    margin-top: var(--space-md);
-}
-.form-actions button,
-.form-actions a[role="button"] {
-    margin-bottom: 0;
-    width: auto;
+    margin-top: var(--space-lg);
+    padding-top: var(--space-md);
+    border-top: var(--card-border);
 }
 
 /* Edit page layout */
