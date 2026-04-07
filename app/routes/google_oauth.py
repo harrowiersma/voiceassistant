@@ -1,7 +1,7 @@
 """Google OAuth 2.0 flow for Google Calendar access.
 
-Provides /google/authorize (redirects to Google consent) and
-/google/callback (receives auth code, exchanges for tokens, stores in DB).
+Supports both global tokens (person_id=0) and per-person tokens.
+/google/authorize?person_id=X starts the flow for a specific person.
 """
 
 import json
@@ -19,6 +19,7 @@ bp = Blueprint("google_oauth", __name__)
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 SCOPES = "https://www.googleapis.com/auth/calendar.readonly"
+CALLBACK_URL = "http://localhost:8080/google/callback"
 
 
 def _db_path():
@@ -27,7 +28,7 @@ def _db_path():
 
 @bp.route("/google/authorize")
 def authorize():
-    """Start the Google OAuth flow — redirect user to Google's consent page."""
+    """Start the Google OAuth flow. Pass ?person_id=X for per-person tokens."""
     db = _db_path()
     client_id = get_config("google.client_id", "", db)
 
@@ -35,18 +36,26 @@ def authorize():
         flash("Google Client ID not configured. Set it on the Availability page first.", "error")
         return redirect(url_for("availability.index"))
 
-    # Google OAuth requires localhost for non-HTTPS redirect URIs.
-    # Use explicit localhost URL since the Pi is accessed via local network.
-    callback_url = "http://localhost:8080/google/callback"
+    # Store person_id in session so we can retrieve it in the callback
+    person_id = request.args.get("person_id", "0")
+    session["google_oauth_person_id"] = person_id
 
     params = {
         "client_id": client_id,
-        "redirect_uri": callback_url,
+        "redirect_uri": CALLBACK_URL,
         "response_type": "code",
         "scope": SCOPES,
         "access_type": "offline",
         "prompt": "consent",
     }
+
+    # Hint the user's email if we have it (makes Google pre-select the account)
+    if person_id != "0":
+        conn = get_db_connection(db)
+        person = conn.execute("SELECT email FROM persons WHERE id = ?", (int(person_id),)).fetchone()
+        conn.close()
+        if person and person["email"]:
+            params["login_hint"] = person["email"]
 
     auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
     return redirect(auth_url)
@@ -65,17 +74,19 @@ def callback():
         flash("No authorization code received from Google.", "error")
         return redirect(url_for("availability.index"))
 
+    # Retrieve person_id from session
+    person_id = int(session.pop("google_oauth_person_id", "0"))
+
     db = _db_path()
     client_id = get_config("google.client_id", "", db)
     client_secret = get_config("google.client_secret", "", db)
-    callback_url = "http://localhost:8080/google/callback"
 
     # Exchange authorization code for tokens
     token_data = urllib.parse.urlencode({
         "code": code,
         "client_id": client_id,
         "client_secret": client_secret,
-        "redirect_uri": callback_url,
+        "redirect_uri": CALLBACK_URL,
         "grant_type": "authorization_code",
     }).encode()
 
@@ -88,7 +99,7 @@ def callback():
             tokens = json.loads(resp.read())
     except Exception as e:
         flash(f"Failed to exchange code for tokens: {e}", "error")
-        return redirect(url_for("availability.index"))
+        return _redirect_back(person_id)
 
     access_token = tokens.get("access_token")
     refresh_token = tokens.get("refresh_token")
@@ -97,30 +108,78 @@ def callback():
 
     if not access_token:
         flash("No access token in Google's response.", "error")
-        return redirect(url_for("availability.index"))
+        return _redirect_back(person_id)
 
-    # Store tokens in DB
+    # Store tokens in DB with person_id
     conn = get_db_connection(db)
     conn.execute(
-        "INSERT OR REPLACE INTO oauth_tokens (provider, access_token, refresh_token, expires_at, scopes) "
-        "VALUES (?, ?, ?, ?, ?)",
-        ("google", access_token, refresh_token, expires_at.isoformat(), SCOPES),
+        "INSERT OR REPLACE INTO oauth_tokens (provider, person_id, access_token, refresh_token, expires_at, scopes) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ("google", person_id, access_token, refresh_token, expires_at.isoformat(), SCOPES),
     )
     conn.commit()
     conn.close()
 
-    flash("Google Calendar connected successfully!", "success")
+    if person_id > 0:
+        flash("Google Calendar connected for this person!", "success")
+    else:
+        flash("Google Calendar connected successfully!", "success")
+    return _redirect_back(person_id)
+
+
+def _redirect_back(person_id):
+    """Redirect to person edit page or availability page."""
+    if person_id > 0:
+        return redirect(url_for("persons.edit", person_id=person_id))
     return redirect(url_for("availability.index"))
 
 
-def refresh_google_token(db_path=None):
-    """Refresh an expired Google access token using the stored refresh token.
+def get_google_token(db_path=None, person_id=0):
+    """Get a valid Google access token for a person, refreshing if expired.
 
-    Returns the new access token, or None if refresh failed.
+    Falls back to the global token (person_id=0) if no per-person token exists.
     """
     conn = get_db_connection(db_path)
+
+    # Try per-person token first, then global
+    row = None
+    if person_id > 0:
+        row = conn.execute(
+            "SELECT access_token, refresh_token, expires_at FROM oauth_tokens "
+            "WHERE provider = 'google' AND person_id = ?",
+            (person_id,),
+        ).fetchone()
+
+    if not row:
+        row = conn.execute(
+            "SELECT access_token, refresh_token, expires_at FROM oauth_tokens "
+            "WHERE provider = 'google' AND person_id = 0",
+        ).fetchone()
+        person_id = 0  # Using global token
+
+    conn.close()
+
+    if not row:
+        return None
+
+    # Check if token is expired
+    if row["expires_at"]:
+        try:
+            exp = datetime.fromisoformat(row["expires_at"])
+            if datetime.utcnow() >= exp:
+                return _refresh_token(db_path, person_id)
+        except (ValueError, TypeError):
+            pass
+
+    return row["access_token"]
+
+
+def _refresh_token(db_path, person_id):
+    """Refresh an expired Google access token."""
+    conn = get_db_connection(db_path)
     row = conn.execute(
-        "SELECT refresh_token FROM oauth_tokens WHERE provider = 'google'"
+        "SELECT refresh_token FROM oauth_tokens WHERE provider = 'google' AND person_id = ?",
+        (person_id,),
     ).fetchone()
 
     if not row or not row["refresh_token"]:
@@ -158,8 +217,9 @@ def refresh_google_token(db_path=None):
 
     if access_token:
         conn.execute(
-            "UPDATE oauth_tokens SET access_token = ?, expires_at = ? WHERE provider = 'google'",
-            (access_token, expires_at.isoformat()),
+            "UPDATE oauth_tokens SET access_token = ?, expires_at = ? "
+            "WHERE provider = 'google' AND person_id = ?",
+            (access_token, expires_at.isoformat(), person_id),
         )
         conn.commit()
 

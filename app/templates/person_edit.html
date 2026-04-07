@@ -65,7 +65,20 @@
                 <input type="checkbox" name="calendar_types" value="google" {{ 'checked' if 'google' in cal_types }}>
                 Google Calendar
             </label>
-            <p class="help-text">Configure MS Graph credentials on the <a href="/availability">Availability</a> page. Google Calendar credentials are configured there too.</p>
+
+            {% if 'google' in cal_types %}
+            <div style="margin-top:var(--space-md)">
+                {% if google_connected %}
+                <p><span class="status-badge"><span class="status-dot ok"></span> Google Calendar connected for {{ person.name }}</span></p>
+                <a href="{{ url_for('google_oauth.authorize', person_id=person.id) }}" role="button" class="outline secondary btn-sm">Reconnect with different account</a>
+                {% else %}
+                <a href="{{ url_for('google_oauth.authorize', person_id=person.id) }}" role="button">Connect {{ person.name }}'s Google Calendar</a>
+                <p class="help-text">This will open Google sign-in. Sign in with {{ person.name }}'s Google account to check their calendar.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <p class="help-text">MS Graph credentials are configured on the <a href="/availability">Availability</a> page.</p>
         </div>
 
         <div class="form-actions">

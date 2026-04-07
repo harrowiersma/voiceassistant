@@ -69,11 +69,13 @@ CREATE TABLE IF NOT EXISTS knowledge_rules (
 );
 
 CREATE TABLE IF NOT EXISTS oauth_tokens (
-    provider TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    person_id INTEGER NOT NULL DEFAULT 0,
     access_token TEXT NOT NULL,
     refresh_token TEXT,
     expires_at TIMESTAMP,
-    scopes TEXT
+    scopes TEXT,
+    PRIMARY KEY (provider, person_id)
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (

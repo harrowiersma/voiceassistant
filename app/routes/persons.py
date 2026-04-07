@@ -79,11 +79,17 @@ def edit(person_id):
 
     person = conn.execute("SELECT * FROM persons WHERE id = ?", (person_id,)).fetchone()
     personas = conn.execute("SELECT id, name, company_name FROM personas WHERE enabled = 1 ORDER BY name").fetchall()
+    # Check if this person has a Google Calendar token
+    google_token = conn.execute(
+        "SELECT 1 FROM oauth_tokens WHERE provider = 'google' AND person_id = ?",
+        (person_id,),
+    ).fetchone()
     conn.close()
     if not person:
         flash("Person not found.", "error")
         return redirect(url_for("persons.index"))
-    return render_template("person_edit.html", person=dict(person), personas=personas)
+    return render_template("person_edit.html", person=dict(person), personas=personas,
+                           google_connected=google_token is not None)
 
 
 @bp.route("/persons/<int:person_id>/delete", methods=["POST"])
