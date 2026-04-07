@@ -32,13 +32,14 @@ def add():
     cal_types = request.form.getlist("calendar_types")
     calendar_type = ",".join(cal_types) if cal_types else "none"
     conn.execute(
-        "INSERT INTO persons (name, aliases, persona_id, forward_number, calendar_type, email, is_owner) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO persons (name, aliases, persona_id, forward_number, internal_extension, calendar_type, email, is_owner) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             request.form["name"],
             request.form.get("aliases", ""),
             int(request.form["persona_id"]),
             request.form.get("forward_number", ""),
+            request.form.get("internal_extension", ""),
             calendar_type,
             request.form.get("email", ""),
             bool(request.form.get("is_owner")),
@@ -60,12 +61,13 @@ def edit(person_id):
         calendar_type = ",".join(cal_types) if cal_types else "none"
         conn.execute(
             "UPDATE persons SET name=?, aliases=?, persona_id=?, forward_number=?, "
-            "calendar_type=?, email=?, is_owner=? WHERE id=?",
+            "internal_extension=?, calendar_type=?, email=?, is_owner=? WHERE id=?",
             (
                 request.form["name"],
                 request.form.get("aliases", ""),
                 int(request.form["persona_id"]),
                 request.form.get("forward_number", ""),
+                request.form.get("internal_extension", ""),
                 calendar_type,
                 request.form.get("email", ""),
                 bool(request.form.get("is_owner")),

@@ -46,16 +46,13 @@ exten => _X.,1,NoOp(Internal call to ${EXTEN})
  same => n,Hangup()
 
 [forward]
-; Cascading forward: extensions -> SIP trunk -> AI message
-exten => s,1,NoOp(Forwarding call - cascading)
-{% if sip_extension_1_name %} same => n,Dial(PJSIP/{{ sip_extension_1_name }},15)
-{% endif %}
-{% if sip_extension_2_name %} same => n,Dial(PJSIP/{{ sip_extension_2_name }},15)
-{% endif %}
-{% if sip_extension_3_name %} same => n,Dial(PJSIP/{{ sip_extension_3_name }},15)
-{% endif %}
-{% if sip_forward_number %} same => n,Dial(PJSIP/{{ sip_forward_number }}@{% if sip_outbound_server %}outbound-endpoint{% else %}inbound-endpoint{% endif %},15)
-{% endif %}
+; Per-person forwarding: try internal extension first (10s), then external number (30s)
+; FORWARD_EXT and FORWARD_TO are set by the engine before redirecting here
+exten => s,1,NoOp(Forwarding call to ext=${FORWARD_EXT} external=${FORWARD_TO})
+ same => n,GotoIf($["${FORWARD_EXT}" = ""]?external)
+ same => n,Dial(PJSIP/${FORWARD_EXT},10)
+ same => n(external),GotoIf($["${FORWARD_TO}" = ""]?ai-message,s,1)
+ same => n,Dial(PJSIP/${FORWARD_TO}@{% if sip_outbound_server %}outbound-endpoint{% else %}inbound-endpoint{% endif %},30,g)
  same => n,Goto(ai-message,s,1)
 
 [ai-message]

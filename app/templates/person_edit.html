@@ -47,10 +47,17 @@
 
         <div class="form-section">
             <h3>Telephony</h3>
-            <label>
-                Forward Number
-                <input type="text" name="forward_number" value="{{ person.forward_number or '' }}" placeholder="+351924878258">
-            </label>
+            <div class="grid">
+                <label>
+                    Internal Extension
+                    <input type="text" name="internal_extension" value="{{ person.internal_extension or '' }}" placeholder="101">
+                </label>
+                <label>
+                    External Forward Number
+                    <input type="text" name="forward_number" value="{{ person.forward_number or '' }}" placeholder="+351924878258">
+                </label>
+            </div>
+            <p class="help-text">When forwarding, the system tries the internal extension first (10s). If no answer, falls back to the external number.</p>
         </div>
 
         <div class="form-section">

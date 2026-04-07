@@ -261,69 +261,82 @@ def _stream_llm_sentences(llm_client, user_message, system_prompt, history):
         yield remainder
 
 
-def _resolve_person_forward(response_text, persona_id, db_path=None):
+def _resolve_person_forward(response_text, persona_id, db_path=None, include_extension=False):
     """Check if the LLM response mentions connecting to a specific person.
-    Returns that person's forward number, or None to use the default."""
+    Returns forward_number (or (forward_number, internal_extension) if include_extension=True),
+    or None to use the default."""
     if not persona_id:
         return None
     try:
         from db.connection import get_db_connection
         conn = get_db_connection(db_path)
         persons = conn.execute(
-            "SELECT name, aliases, forward_number FROM persons WHERE persona_id = ? AND enabled = 1",
+            "SELECT name, aliases, forward_number, internal_extension FROM persons WHERE persona_id = ? AND enabled = 1",
             (persona_id,),
         ).fetchall()
         conn.close()
 
         response_lower = response_text.lower()
         for person in persons:
-            # Check name
+            matched = False
             if person["name"].lower() in response_lower:
-                if person["forward_number"]:
-                    logger.info(f"Person match: {person['name']} → {person['forward_number']}")
-                    return person["forward_number"]
-            # Check aliases
-            if person["aliases"]:
+                matched = True
+            if not matched and person["aliases"]:
                 for alias in person["aliases"].split(","):
-                    alias = alias.strip().lower()
-                    if alias and alias in response_lower:
-                        if person["forward_number"]:
-                            logger.info(f"Person alias match: {alias} ({person['name']}) → {person['forward_number']}")
-                            return person["forward_number"]
+                    if alias.strip().lower() in response_lower:
+                        matched = True
+                        break
+            if matched and (person["forward_number"] or person["internal_extension"]):
+                ext = person["internal_extension"] or None
+                fwd = person["forward_number"] or None
+                logger.info(f"Person match: {person['name']} → fwd={fwd} ext={ext}")
+                if include_extension:
+                    return (fwd, ext)
+                return fwd
     except Exception as e:
         logger.error(f"Person lookup failed: {e}")
     return None
 
 
-async def _redirect_to_forward(db_path=None, forward_number=None):
+async def _redirect_to_forward(db_path=None, forward_number=None, internal_extension=None):
     """Redirect the active inbound channel to the forward dialplan context.
 
     Finds the PJSIP/inbound-endpoint-* channel and sends it to forward,s,1.
-    This pulls the call out of AudioSocket and into the Dial() for forwarding.
+    Sets FORWARD_TO (external number) and FORWARD_EXT (internal extension).
+    The dialplan tries the extension first (10s), then falls back to external.
     """
     fwd = forward_number or get_config("sip.forward_number", db_path=db_path)
-    if not fwd:
-        logger.warning("No forward number configured")
+    if not fwd and not internal_extension:
+        logger.warning("No forward number or extension configured")
         return
 
     try:
-        # Find the active inbound channel (need sudo — engine runs as voicesec)
         result = subprocess.run(
             ["sudo", "/usr/sbin/asterisk", "-rx", "core show channels concise"],
             capture_output=True, timeout=5, text=True)
         channel_name = None
         for line in result.stdout.splitlines():
-            # Format: channel!context!ext!prio!state!app!data!...
             if line.startswith("PJSIP/inbound-endpoint"):
                 channel_name = line.split("!")[0]
                 break
         if channel_name:
-            # Set the forward number on the channel, then redirect
-            logger.info(f"Redirecting {channel_name} → forward,s,1 (to {fwd})")
-            subprocess.run(
-                ["sudo", "/usr/sbin/asterisk", "-rx",
-                 f"dialplan set chanvar {channel_name} FORWARD_TO {fwd}"],
-                capture_output=True, timeout=5)
+            ext_info = f" ext={internal_extension}" if internal_extension else ""
+            logger.info(f"Redirecting {channel_name} → forward,s,1 (to {fwd}{ext_info})")
+
+            # Set the external forward number
+            if fwd:
+                subprocess.run(
+                    ["sudo", "/usr/sbin/asterisk", "-rx",
+                     f"dialplan set chanvar {channel_name} FORWARD_TO {fwd}"],
+                    capture_output=True, timeout=5)
+
+            # Set the internal extension (if configured)
+            if internal_extension:
+                subprocess.run(
+                    ["sudo", "/usr/sbin/asterisk", "-rx",
+                     f"dialplan set chanvar {channel_name} FORWARD_EXT {internal_extension}"],
+                    capture_output=True, timeout=5)
+
             subprocess.run(
                 ["sudo", "/usr/sbin/asterisk", "-rx",
                  f"channel redirect {channel_name} forward,s,1"],
@@ -700,7 +713,8 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                         await _play_cached_or_synth(bridge, phrase, db_path)
                         session.action_taken = "forwarded"
                         session.transcript.append({"role": "assistant", "text": phrase})
-                        await _redirect_to_forward(db_path, forward_number=fwd_number)
+                        int_ext = person_dict.get("internal_extension") if person_dict else None
+                        await _redirect_to_forward(db_path, forward_number=fwd_number, internal_extension=int_ext)
                         break
                     else:
                         # Person is unavailable — take a message
@@ -736,20 +750,22 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                     break
                 if "connecting you" in lower or "connected" in lower or "transfer" in lower or "forwarding" in lower or "put you through" in lower:
                     session.action_taken = "forwarded"
-                    # Check if connecting to a specific person
-                    fwd_number = _resolve_person_forward(lower, persona_id, db_path)
-                    await _redirect_to_forward(db_path, forward_number=fwd_number)
+                    result = _resolve_person_forward(lower, persona_id, db_path, include_extension=True)
+                    fwd_number, int_ext = result if result else (None, None)
+                    await _redirect_to_forward(db_path, forward_number=fwd_number, internal_extension=int_ext)
                     break
 
                 # Also check if the caller asked for a team member by name
-                # (even if the LLM didn't say "connecting" — small models miss this)
                 if persona_id:
-                    fwd_number = _resolve_person_forward(transcript.lower(), persona_id, db_path)
-                    if fwd_number and ("check" in lower or "available" in lower or "let me" in lower):
-                        session.action_taken = "forwarded"
-                        await bridge.synthesize_and_play(f"Let me connect you now.", db_path)
-                        await _redirect_to_forward(db_path, forward_number=fwd_number)
-                        break
+                    result = _resolve_person_forward(transcript.lower(), persona_id, db_path, include_extension=True)
+                    if result:
+                        fwd_number, int_ext = result
+                        if fwd_number or int_ext:
+                            if "check" in lower or "available" in lower or "let me" in lower:
+                                session.action_taken = "forwarded"
+                                await bridge.synthesize_and_play(f"Let me connect you now.", db_path)
+                                await _redirect_to_forward(db_path, forward_number=fwd_number, internal_extension=int_ext)
+                                break
 
             if len(audio_buffer) > ASTERISK_SAMPLE_RATE * ASTERISK_SAMPLE_WIDTH * 30:
                 audio_buffer.clear()

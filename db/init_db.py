@@ -17,6 +17,13 @@ def init_db(db_path=None):
     with open(SCHEMA_PATH) as f:
         conn.executescript(f.read())
 
+    # Migrate persons: add internal_extension column if missing
+    cursor = conn.execute("PRAGMA table_info(persons)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "internal_extension" not in columns:
+        conn.execute("ALTER TABLE persons ADD COLUMN internal_extension TEXT")
+        conn.commit()
+
     # Migrate oauth_tokens: add person_id column if missing (v2 schema)
     cursor = conn.execute("PRAGMA table_info(oauth_tokens)")
     columns = [row[1] for row in cursor.fetchall()]

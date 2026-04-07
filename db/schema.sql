@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS persons (
     calendar_type TEXT DEFAULT 'none',
     calendar_config TEXT,
     email TEXT,
+    internal_extension TEXT,
     is_owner BOOLEAN DEFAULT FALSE,
     enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
