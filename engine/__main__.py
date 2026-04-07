@@ -6,7 +6,7 @@ and processes them through the STT → LLM → TTS pipeline.
 import asyncio
 import logging
 from engine.audiosocket import start_server
-from engine.call_handler import handle_call, init_vosk_model
+from engine.call_handler import handle_call, init_vosk_model, init_audio_cache
 from engine.llm import LLMClient
 from app.helpers import get_config
 from db.init_db import DEFAULT_DB_PATH
@@ -61,9 +61,10 @@ async def keepalive_loop():
 
 
 async def main():
-    # Pre-load models at startup
+    # Pre-load models and caches at startup
     init_vosk_model()
     warmup_ollama()
+    init_audio_cache()
 
     # Start keepalive in background
     asyncio.create_task(keepalive_loop())

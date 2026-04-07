@@ -39,6 +39,80 @@ PIPER_MODEL_DIR = "/opt/voice-secretary/models/piper"
 # Pre-loaded Vosk model
 _vosk_model = None
 
+# Pre-cached audio (greeting per persona, common phrases per person)
+_greeting_cache = {}   # persona_id → PCM bytes
+_phrase_cache = {}     # phrase string → PCM bytes
+_person_names = {}     # persona_id → [(name_lower, aliases_list, forward_number, person_id)]
+
+
+def init_audio_cache(db_path=None):
+    """Pre-synthesize greetings and common phrases at startup. Runs in ~30s."""
+    global _greeting_cache, _phrase_cache, _person_names
+    db_path = db_path or DEFAULT_DB_PATH
+    from db.connection import get_db_connection
+    conn = get_db_connection(db_path)
+
+    # Cache greetings per persona
+    personas = conn.execute("SELECT id, greeting, company_name FROM personas WHERE enabled = 1").fetchall()
+    for p in personas:
+        greeting = p["greeting"].replace("{company}", p["company_name"] or "")
+        if greeting:
+            logger.info(f"Caching greeting for persona {p['id']}: {greeting[:50]}...")
+            pcm = _synthesize_tts_sync(greeting, db_path)
+            if pcm:
+                _greeting_cache[p["id"]] = pcm
+
+    # Build person name lookup and cache connecting phrases
+    persons = conn.execute(
+        "SELECT id, name, aliases, forward_number, persona_id FROM persons WHERE enabled = 1"
+    ).fetchall()
+    for person in persons:
+        pid = person["persona_id"]
+        if pid not in _person_names:
+            _person_names[pid] = []
+
+        names = [person["name"].lower()]
+        if person["aliases"]:
+            names.extend([a.strip().lower() for a in person["aliases"].split(",") if a.strip()])
+
+        _person_names[pid].append((person["name"], names, person["forward_number"], person["id"]))
+
+        # Cache "Connecting you to [Name] now."
+        phrase = f"Connecting you to {person['name']} now."
+        logger.info(f"Caching phrase: {phrase}")
+        pcm = _synthesize_tts_sync(phrase, db_path)
+        if pcm:
+            _phrase_cache[phrase] = pcm
+
+    # Cache common phrases
+    for phrase in [
+        "Are you still there?",
+        "Would you like to leave a message?",
+        "Thank you, goodbye.",
+        "Let me take a message for you.",
+    ]:
+        logger.info(f"Caching phrase: {phrase}")
+        pcm = _synthesize_tts_sync(phrase, db_path)
+        if pcm:
+            _phrase_cache[phrase] = pcm
+
+    conn.close()
+    logger.info(f"Audio cache ready: {len(_greeting_cache)} greetings, {len(_phrase_cache)} phrases, {len(_person_names)} persona name-sets")
+
+
+def _match_person_in_transcript(transcript, persona_id):
+    """Check if transcript mentions a team member by name. Returns (name, forward_number, person_id) or None."""
+    if persona_id not in _person_names:
+        return None
+    spoken = transcript.lower()
+    for display_name, name_variants, fwd_number, person_id in _person_names[persona_id]:
+        if not fwd_number:
+            continue
+        for name in name_variants:
+            if name in spoken:
+                return (display_name, fwd_number, person_id)
+    return None
+
 # Pre-built silence frame (20ms at 8kHz 16-bit mono = 320 bytes)
 _SILENCE_PCM = b'\x00' * 320
 _SILENCE_FRAME = AudioSocketProtocol.build_audio_frame(_SILENCE_PCM)
@@ -327,6 +401,24 @@ class AudioBridge:
             self._task.cancel()
 
 
+async def _play_cached_or_synth(bridge, text, db_path):
+    """Play from phrase cache if available, otherwise synthesize live."""
+    if text in _phrase_cache:
+        logger.info(f"Playing cached: {text[:50]}...")
+        await bridge.play_audio(_phrase_cache[text])
+    else:
+        await bridge.synthesize_and_play(text, db_path)
+
+
+async def _play_greeting_cached(bridge, persona_id, session, db_path):
+    """Play cached greeting or synthesize if not cached."""
+    if persona_id and persona_id in _greeting_cache:
+        logger.info(f"Playing cached greeting for persona {persona_id}")
+        await bridge.play_audio(_greeting_cache[persona_id])
+    else:
+        await bridge.synthesize_and_play(session.get_greeting_text(), db_path)
+
+
 async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """Handle one phone call with streaming LLM→TTS pipeline."""
     db_path = DEFAULT_DB_PATH
@@ -406,10 +498,10 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
             import vosk
             recognizer = vosk.KaldiRecognizer(_vosk_model, 16000)
 
-        # Send greeting — different for vacation, outside hours, or normal
+        # Send greeting — use cached audio when available
         if session.vacation_active:
             await bridge.synthesize_and_play(session.vacation_message, db_path)
-            await bridge.synthesize_and_play("Would you like to leave a message?", db_path)
+            await _play_cached_or_synth(bridge, "Would you like to leave a message?", db_path)
             await bridge.play_beep()
         elif session.outside_hours:
             company = persona.get("company_name") if persona else get_config("persona.company_name", "the company", db_path)
@@ -418,19 +510,18 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
             await bridge.synthesize_and_play(
                 f"Thank you for calling {company}. We are currently closed. "
                 f"Our business hours are {start} to {end}, Monday to Friday.", db_path)
-            await bridge.synthesize_and_play(
-                "Please leave your name, number, and a brief message, and we'll get back to you.", db_path)
+            await _play_cached_or_synth(bridge, "Please leave your name, number, and a brief message, and we'll get back to you.", db_path)
             await bridge.play_beep()
             session.system_prompt += "\nIMPORTANT: It is outside business hours. Take a message. Ask for name, number, and reason."
             logger.info("Outside business hours — taking messages")
         elif session.forced_unavailable:
-            await bridge.synthesize_and_play(session.get_greeting_text(), db_path)
+            await _play_greeting_cached(bridge, persona_id, session, db_path)
             unavail = get_config("persona.unavailable_message", "They are not available right now.", db_path)
             await bridge.synthesize_and_play(unavail, db_path)
             await bridge.play_beep()
             session.system_prompt += "\nIMPORTANT: The person is unavailable. Take a message."
         else:
-            await bridge.synthesize_and_play(session.get_greeting_text(), db_path)
+            await _play_greeting_cached(bridge, persona_id, session, db_path)
 
         # Main conversation loop
         audio_buffer = bytearray()
@@ -499,7 +590,7 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                     if session.silence_count >= 3:
                         await bridge.synthesize_and_play("I haven't heard anything. Goodbye.", db_path)
                         break
-                    await bridge.synthesize_and_play("Are you still there?", db_path)
+                    await _play_cached_or_synth(bridge, "Are you still there?", db_path)
                     continue
 
                 session.silence_count = 0
@@ -546,6 +637,20 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                     session.transcript.append({"role": "assistant", "text": "Connecting you now."})
                     # Redirect the Asterisk channel to the forward context
                     await _redirect_to_forward(db_path)
+                    break
+
+                # --- PERSON NAME DETECTION: skip LLM for instant forwarding ---
+                person_match = _match_person_in_transcript(transcript, persona_id)
+                if person_match:
+                    display_name, fwd_number, matched_person_id = person_match
+                    logger.info(f"Person name detected in STT: '{display_name}' → {fwd_number} (skipping LLM)")
+                    session.transcript.append({"role": "user", "text": transcript})
+                    phrase = f"Connecting you to {display_name} now."
+                    await _play_cached_or_synth(bridge, phrase, db_path)
+                    session.action_taken = "forwarded"
+                    session.caller_name = transcript  # preserve what they said
+                    session.transcript.append({"role": "assistant", "text": phrase})
+                    await _redirect_to_forward(db_path, forward_number=fwd_number)
                     break
 
                 session.transcript.append({"role": "user", "text": transcript})

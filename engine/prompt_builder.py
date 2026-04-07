@@ -112,42 +112,32 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
     code_word = get_config("security.code_word", "", db_path)
 
     prompt_parts = [
-        f"You are a phone secretary for {company}. This is a live phone call.",
-        "RULES: Reply in 1-2 short sentences only. Be warm and professional.",
-        "FLOW: Ask caller's name and reason. Then say you'll check availability. Then take a message or say goodbye.",
-        f"When unavailable say: {unavailable}",
-        "Never make up information. Never pretend to do things you cannot do.",
-        "Do NOT use actions, emojis, stage directions, or narration. Just speak naturally.",
+        f"Phone secretary for {company}. Live call.",
+        "Reply in 1-2 short sentences. Be warm, professional.",
+        f"If unavailable: {unavailable}",
     ]
 
     if code_word:
-        prompt_parts.append(f"If caller says \"{code_word}\", say \"Connecting you now.\"")
+        prompt_parts.append(f"Code word \"{code_word}\" = say \"Connecting you now.\"")
 
-    # Add team members so the AI knows who works here
+    # Add team members (names only, no aliases — name matching handled by engine)
     conn2 = get_db_connection(db_path)
     persons = conn2.execute(
-        "SELECT name, aliases FROM persons WHERE persona_id = ? AND enabled = 1",
+        "SELECT name FROM persons WHERE persona_id = ? AND enabled = 1",
         (persona_id,),
     ).fetchall()
     conn2.close()
     if persons:
-        names = []
-        for p in persons:
-            n = p["name"]
-            if p["aliases"]:
-                n += f" (also known as: {p['aliases']})"
-            names.append(n)
-        prompt_parts.append(f"\nTEAM: These people work here: {', '.join(names)}.")
-        prompt_parts.append("When caller asks for someone, say \"Let me check if [name] is available\" then say \"Connecting you to [name] now.\"")
-        prompt_parts.append("If the person is not in the team list, say they don't work here and offer to take a message.")
+        names = [p["name"] for p in persons]
+        prompt_parts.append(f"Team: {', '.join(names)}. Ask caller name and reason. Take a message if needed.")
 
     if rules:
-        prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
         for rule in rules:
             rule_dict = dict(rule)
-            rule_line = f"- [{rule_dict['rule_type'].upper()}]"
-            if rule_dict["trigger_keywords"]:
-                rule_line += f" When caller mentions: {rule_dict['trigger_keywords']}."
-            rule_line += f" {rule_dict['response']}"
-            prompt_parts.append(rule_line)
+            kw = rule_dict["trigger_keywords"]
+            resp = rule_dict["response"]
+            if kw:
+                prompt_parts.append(f"If caller mentions {kw}: {resp}")
+            else:
+                prompt_parts.append(resp)
     return "\n".join(prompt_parts)
