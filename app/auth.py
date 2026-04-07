@@ -21,8 +21,10 @@ def login_required_hook():
     if current_app.config.get("TESTING"):
         return None
 
-    # Allow access to auth-related routes without login
+    # Allow access to auth-related and OAuth callback routes without login
     if request.endpoint and request.endpoint.startswith("auth."):
+        return None
+    if request.endpoint and request.endpoint.startswith("google_oauth."):
         return None
 
     # Allow static files

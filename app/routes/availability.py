@@ -31,7 +31,17 @@ def index():
     values = {}
     for key in AVAILABILITY_FIELDS:
         values[key] = get_config(key, default=AVAILABILITY_DEFAULTS.get(key, ""), db_path=db)
-    return render_template("availability.html", values=values)
+
+    # Check Google Calendar connection status
+    from db.connection import get_db_connection
+    conn = get_db_connection(db)
+    google_token = conn.execute(
+        "SELECT access_token, expires_at FROM oauth_tokens WHERE provider = 'google'"
+    ).fetchone()
+    conn.close()
+    google_connected = google_token is not None and google_token["access_token"]
+
+    return render_template("availability.html", values=values, google_connected=google_connected)
 
 
 @bp.route("/availability/save", methods=["POST"])

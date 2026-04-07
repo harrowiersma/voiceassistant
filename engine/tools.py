@@ -98,6 +98,33 @@ TOOL_DEFINITIONS = [
 
 # ── Action map: presence -> recommended action ─────────────────────────
 
+def _get_google_token(db_path=None):
+    """Get a valid Google access token, refreshing if expired."""
+    from db.connection import get_db_connection
+    conn = get_db_connection(db_path)
+    row = conn.execute(
+        "SELECT access_token, refresh_token, expires_at FROM oauth_tokens WHERE provider = 'google'"
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    # Check if token is expired
+    expires_at = row["expires_at"]
+    if expires_at:
+        from datetime import datetime
+        try:
+            exp = datetime.fromisoformat(expires_at)
+            if datetime.utcnow() >= exp:
+                from app.routes.google_oauth import refresh_google_token
+                new_token = refresh_google_token(db_path)
+                return new_token
+        except (ValueError, TypeError):
+            pass
+
+    return row["access_token"]
+
+
 _PRESENCE_ACTION = {
     "available": "forward",
     "busy": "take_message",
@@ -142,14 +169,7 @@ def _handle_check_availability(arguments, db_path=None, mock_presence=None,
             statuses.append(client.check_presence())
         elif cal == "google":
             from integrations.google_calendar import GoogleCalendarClient
-            from db.connection import get_db_connection
-            # Get Google OAuth token from DB
-            conn = get_db_connection(db_path)
-            row = conn.execute(
-                "SELECT access_token FROM oauth_tokens WHERE provider = 'google'"
-            ).fetchone()
-            conn.close()
-            token = row["access_token"] if row else None
+            token = _get_google_token(db_path)
             if token:
                 gcal = GoogleCalendarClient(access_token=token)
                 is_busy = gcal.is_busy_now()
@@ -209,13 +229,7 @@ def _handle_suggest_callback_times(arguments, db_path=None, person=None, **_kw):
             all_slots.append(client.get_free_slots(date))
         elif cal == "google":
             from integrations.google_calendar import GoogleCalendarClient
-            from db.connection import get_db_connection
-            conn = get_db_connection(db_path)
-            row = conn.execute(
-                "SELECT access_token FROM oauth_tokens WHERE provider = 'google'"
-            ).fetchone()
-            conn.close()
-            token = row["access_token"] if row else None
+            token = _get_google_token(db_path)
             if token:
                 gcal = GoogleCalendarClient(access_token=token)
                 all_slots.append(gcal.get_free_slots(date))

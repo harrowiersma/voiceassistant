@@ -134,11 +134,33 @@
                 Client Secret
                 <input type="password" name="google.client_secret" value="{{ values['google.client_secret'] }}">
             </label>
+            {% if google_connected %}
+            <p><span class="status-badge"><span class="status-dot ok"></span> Google Calendar connected</span></p>
+            {% elif values['google.client_id'] %}
+            <p class="help-text">Credentials saved. After saving, click the button below to authorize access.</p>
+            {% endif %}
         </div>
 
         <div class="form-actions">
             <button type="submit">Save Availability Settings</button>
         </div>
     </form>
+
+    {% if values['google.client_id'] and not google_connected %}
+    <div class="form-section" style="margin-top:var(--space-md)">
+        <h3>Connect Google Account</h3>
+        <p class="help-text">After saving your credentials above, click here to authorize Voice Secretary to read your Google Calendar.</p>
+        <a href="{{ url_for('google_oauth.authorize') }}" role="button">Connect Google Calendar</a>
+    </div>
+    {% endif %}
+
+    {% if google_connected %}
+    <div class="form-section" style="margin-top:var(--space-md)">
+        <h3>Google Calendar</h3>
+        <p><span class="status-badge"><span class="status-dot ok"></span> Connected and active</span></p>
+        <p class="help-text">To reconnect with a different account, click below.</p>
+        <a href="{{ url_for('google_oauth.authorize') }}" role="button" class="outline secondary">Reconnect Google Calendar</a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

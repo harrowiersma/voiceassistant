@@ -29,6 +29,7 @@ def create_app(test_config=None):
     from app.routes.system import bp as system_bp
     from app.routes.api import bp as api_bp
     from app.routes.backup import bp as backup_bp
+    from app.routes.google_oauth import bp as google_oauth_bp
 
     app.register_blueprint(auth_bp)
     app.before_request(login_required_hook)
@@ -47,5 +48,6 @@ def create_app(test_config=None):
     app.register_blueprint(system_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(backup_bp)
+    app.register_blueprint(google_oauth_bp)
 
     return app
