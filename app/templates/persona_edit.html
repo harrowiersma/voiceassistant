@@ -40,16 +40,23 @@
 
     <div class="grid">
         <label>
+            Inbound Number
+            <input type="text" name="inbound_number" value="{{ persona.inbound_number or '' }}" placeholder="+41445514582">
+        </label>
+        <label>
+            Timezone <small>(auto-detected from number if empty)</small>
+            <input type="text" name="timezone" value="{{ persona.timezone or '' }}" placeholder="Europe/Zurich">
+        </label>
+    </div>
+
+    <div class="grid">
+        <label>
             Calendar Type
             <select name="calendar_type">
                 <option value="none" {% if persona.calendar_type == 'none' %}selected{% endif %}>None</option>
                 <option value="msgraph" {% if persona.calendar_type == 'msgraph' %}selected{% endif %}>Microsoft Graph</option>
                 <option value="google" {% if persona.calendar_type == 'google' %}selected{% endif %}>Google Calendar</option>
             </select>
-        </label>
-        <label>
-            Inbound Number
-            <input type="text" name="inbound_number" value="{{ persona.inbound_number or '' }}">
         </label>
     </div>
 

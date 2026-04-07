@@ -24,21 +24,31 @@
 
     <h3>Language Model</h3>
     <label>
-        LLM Model
+        LLM Model (Ollama)
         <select name="ai.llm_model">
-            <option value="llama3.2:1b" {{ 'selected' if values['ai.llm_model'] == 'llama3.2:1b' }}>llama3.2:1b</option>
-            <option value="llama3.2:3b" {{ 'selected' if values['ai.llm_model'] == 'llama3.2:3b' }}>llama3.2:3b</option>
+            {% for model in ollama_models %}
+            <option value="{{ model }}" {{ 'selected' if values['ai.llm_model'] == model }}>{{ model }}</option>
+            {% endfor %}
+            {% if values['ai.llm_model'] not in ollama_models %}
+            <option value="{{ values['ai.llm_model'] }}" selected>{{ values['ai.llm_model'] }} (not found)</option>
+            {% endif %}
         </select>
     </label>
+    <small>Models installed on Ollama. Run <code>ollama pull &lt;model&gt;</code> on the Pi to add more.</small>
 
     <h3>Text-to-Speech</h3>
     <label>
-        TTS Voice
+        TTS Voice (Piper)
         <select name="ai.tts_voice">
-            <option value="en-us-amy-medium" {{ 'selected' if values['ai.tts_voice'] == 'en-us-amy-medium' }}>en-us-amy-medium</option>
-            <option value="en-gb-alan-medium" {{ 'selected' if values['ai.tts_voice'] == 'en-gb-alan-medium' }}>en-gb-alan-medium</option>
+            {% for voice in piper_voices %}
+            <option value="{{ voice }}" {{ 'selected' if values['ai.tts_voice'] == voice }}>{{ voice }}</option>
+            {% endfor %}
+            {% if values['ai.tts_voice'] not in piper_voices %}
+            <option value="{{ values['ai.tts_voice'] }}" selected>{{ values['ai.tts_voice'] }} (not found)</option>
+            {% endif %}
         </select>
     </label>
+    <small>Voices in <code>/opt/voice-secretary/models/piper/</code>. Download more from <a href="https://huggingface.co/rhasspy/piper-voices" target="_blank">Piper Voices</a>.</small>
 
     <h3>Timeouts</h3>
     <div class="grid">

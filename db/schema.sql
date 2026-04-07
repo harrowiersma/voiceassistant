@@ -20,6 +20,20 @@ CREATE TABLE IF NOT EXISTS personas (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS persons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    aliases TEXT,
+    persona_id INTEGER NOT NULL REFERENCES personas(id),
+    forward_number TEXT,
+    calendar_type TEXT DEFAULT 'none',
+    calendar_config TEXT,
+    email TEXT,
+    is_owner BOOLEAN DEFAULT FALSE,
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS calls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TIMESTAMP NOT NULL,

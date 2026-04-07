@@ -26,49 +26,80 @@
 </table>
 
 <h3>System Health</h3>
-<div class="card-grid"
-     hx-get="/api/status"
-     hx-trigger="load, every 10s"
-     hx-swap="innerHTML"
-     hx-target="#health-cards">
-    <div id="health-cards">
-        <article class="data-card">
-            <h3>Loading...</h3>
-            <div class="value">
-                <span class="status-badge">
-                    <span class="status-dot idle"></span>
-                    Connecting...
-                </span>
-            </div>
-        </article>
-    </div>
+<div id="health-cards" class="card-grid">
+    <article class="data-card"><h3>Loading...</h3><div class="value">...</div></article>
+</div>
+
+<h3>SIP Trunks</h3>
+<div id="sip-cards" class="card-grid">
+    <article class="data-card"><h3>Loading...</h3><div class="value">...</div></article>
+</div>
+
+<h3>AI Components</h3>
+<div id="ai-cards" class="card-grid">
+    <article class="data-card"><h3>Loading...</h3><div class="value">...</div></article>
 </div>
 
 <script>
-document.body.addEventListener("htmx:beforeSwap", function(evt) {
-    if (evt.detail.target.id !== "health-cards") return;
-    try {
-        var data = JSON.parse(evt.detail.serverResponse);
-        var html = "";
-        if (data.cpu_temp !== undefined) {
+function renderStatus() {
+    fetch('/api/status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        // System health
+        var html = '';
+        if (data.system.cpu_temp !== null) {
+            var tempClass = data.system.cpu_temp > 70 ? 'error' : data.system.cpu_temp > 60 ? 'warn' : 'ok';
             html += '<article class="data-card"><h3>CPU Temp</h3>';
-            html += '<div class="value">' + data.cpu_temp + '&deg;C</div></article>';
+            html += '<div class="value"><span class="status-badge"><span class="status-dot ' + tempClass + '"></span>' + data.system.cpu_temp + '&deg;C</span></div></article>';
         }
-        if (data.ram !== undefined) {
+        if (data.system.ram !== undefined) {
+            var ramClass = data.system.ram > 85 ? 'error' : data.system.ram > 70 ? 'warn' : 'ok';
             html += '<article class="data-card"><h3>RAM</h3>';
-            html += '<div class="value">' + data.ram + '%</div></article>';
+            html += '<div class="value"><span class="status-badge"><span class="status-dot ' + ramClass + '"></span>' + data.system.ram + '% (' + data.system.ram_used_mb + '/' + data.system.ram_total_mb + ' MB)</span></div></article>';
         }
-        if (data.disk !== undefined) {
+        if (data.system.disk !== undefined) {
+            var diskClass = data.system.disk > 90 ? 'error' : data.system.disk > 75 ? 'warn' : 'ok';
             html += '<article class="data-card"><h3>Disk</h3>';
-            html += '<div class="value">' + data.disk + '%</div></article>';
+            html += '<div class="value"><span class="status-badge"><span class="status-dot ' + diskClass + '"></span>' + data.system.disk + '%</span></div></article>';
         }
-        if (html) {
-            evt.detail.serverResponse = html;
-        }
-    } catch(e) {
-        // Not JSON — let HTMX handle it normally
-    }
-});
+        document.getElementById('health-cards').innerHTML = html || '<p>No data</p>';
+
+        // SIP trunks
+        var sipHtml = '';
+        var inStatus = data.asterisk.inbound_trunk || 'unknown';
+        var inClass = inStatus === 'registered' ? 'ok' : 'error';
+        sipHtml += '<article class="data-card"><h3>Inbound (DIDWW)</h3>';
+        sipHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + inClass + '"></span>' + inStatus + '</span></div></article>';
+
+        var outStatus = data.asterisk.outbound_trunk || 'unknown';
+        var outClass = outStatus === 'registered' ? 'ok' : 'error';
+        sipHtml += '<article class="data-card"><h3>Outbound (VoIPBuster)</h3>';
+        sipHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + outClass + '"></span>' + outStatus + '</span></div></article>';
+
+        sipHtml += '<article class="data-card"><h3>Active Calls</h3>';
+        sipHtml += '<div class="value">' + data.asterisk.active_calls + '</div></article>';
+        document.getElementById('sip-cards').innerHTML = sipHtml;
+
+        // AI components
+        var aiHtml = '';
+        var components = [
+            {name: 'Ollama LLM', status: data.ai.ollama, okVal: 'running'},
+            {name: 'Vosk STT', status: data.ai.vosk, okVal: 'installed'},
+            {name: 'Piper TTS', status: data.ai.piper, okVal: 'installed'},
+        ];
+        components.forEach(function(c) {
+            var cls = c.status === c.okVal ? 'ok' : 'error';
+            aiHtml += '<article class="data-card"><h3>' + c.name + '</h3>';
+            aiHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + cls + '"></span>' + c.status + '</span></div></article>';
+        });
+        document.getElementById('ai-cards').innerHTML = aiHtml;
+    })
+    .catch(function() {
+        document.getElementById('health-cards').innerHTML = '<p>Failed to load status</p>';
+    });
+}
+renderStatus();
+setInterval(renderStatus, 10000);
 </script>
 
 <h3>Config Backup &amp; Restore</h3>

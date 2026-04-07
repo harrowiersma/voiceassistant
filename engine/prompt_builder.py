@@ -123,6 +123,24 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
     if code_word:
         prompt_parts.append(f"If caller says \"{code_word}\", say \"Connecting you now.\"")
 
+    # Add team members so the AI knows who works here
+    conn2 = get_db_connection(db_path)
+    persons = conn2.execute(
+        "SELECT name, aliases FROM persons WHERE persona_id = ? AND enabled = 1",
+        (persona_id,),
+    ).fetchall()
+    conn2.close()
+    if persons:
+        names = []
+        for p in persons:
+            n = p["name"]
+            if p["aliases"]:
+                n += f" (also known as: {p['aliases']})"
+            names.append(n)
+        prompt_parts.append(f"\nTEAM: These people work here: {', '.join(names)}.")
+        prompt_parts.append("When caller asks for someone, say \"Let me check if [name] is available\" then say \"Connecting you to [name] now.\"")
+        prompt_parts.append("If the person is not in the team list, say they don't work here and offer to take a message.")
+
     if rules:
         prompt_parts.append("\n## Knowledge Rules (follow these instructions):")
         for rule in rules:

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block page_title %}Edit Person: {{ person.name }}{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('persons.edit', person_id=person.id) }}">
+    <div class="grid">
+        <label>
+            Name
+            <input type="text" name="name" value="{{ person.name }}" required>
+        </label>
+        <label>
+            Aliases (comma-separated)
+            <input type="text" name="aliases" value="{{ person.aliases or '' }}">
+        </label>
+    </div>
+    <div class="grid">
+        <label>
+            Persona (Company)
+            <select name="persona_id" required>
+                {% for p in personas %}
+                <option value="{{ p.id }}" {{ 'selected' if person.persona_id == p.id }}>{{ p.name }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Forward Number
+            <input type="text" name="forward_number" value="{{ person.forward_number or '' }}">
+        </label>
+    </div>
+    <div class="grid">
+        <label>
+            Calendar Type
+            <select name="calendar_type">
+                <option value="none" {{ 'selected' if person.calendar_type == 'none' }}>None</option>
+                <option value="msgraph" {{ 'selected' if person.calendar_type == 'msgraph' }}>Microsoft Graph (Teams)</option>
+                <option value="google" {{ 'selected' if person.calendar_type == 'google' }}>Google Calendar</option>
+            </select>
+        </label>
+        <label>
+            Email
+            <input type="email" name="email" value="{{ person.email or '' }}">
+        </label>
+    </div>
+    <label>
+        <input type="checkbox" name="is_owner" value="1" {{ 'checked' if person.is_owner }}>
+        Owner / primary contact
+    </label>
+    <div class="grid">
+        <button type="submit">Save Changes</button>
+        <a href="{{ url_for('persons.index') }}" role="button" class="outline secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

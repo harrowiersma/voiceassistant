@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block page_title %}People{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash {{ category }}">{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<p>Manage team members. Each person can have their own calendar and forwarding number. When a caller asks for a specific person, the AI checks their calendar and forwards accordingly.</p>
+
+<details>
+    <summary role="button" class="outline">Add New Person</summary>
+    <form method="post" action="{{ url_for('persons.add') }}">
+        <div class="grid">
+            <label>
+                Name
+                <input type="text" name="name" required placeholder="e.g. Harro Wiersma">
+            </label>
+            <label>
+                Aliases (comma-separated)
+                <input type="text" name="aliases" placeholder="e.g. Harro, Mr Wiersma">
+            </label>
+        </div>
+        <div class="grid">
+            <label>
+                Persona (Company)
+                <select name="persona_id" required>
+                    {% for p in personas %}
+                    <option value="{{ p.id }}">{{ p.name }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Forward Number
+                <input type="text" name="forward_number" placeholder="+351924878258">
+            </label>
+        </div>
+        <div class="grid">
+            <label>
+                Calendar Type
+                <select name="calendar_type">
+                    <option value="none">None</option>
+                    <option value="msgraph">Microsoft Graph (Teams)</option>
+                    <option value="google">Google Calendar</option>
+                </select>
+            </label>
+            <label>
+                Email
+                <input type="email" name="email" placeholder="harro@xappo.mt">
+            </label>
+        </div>
+        <label>
+            <input type="checkbox" name="is_owner" value="1">
+            Owner / primary contact (receives forwarded calls by default)
+        </label>
+        <button type="submit">Add Person</button>
+    </form>
+</details>
+
+<h3>Team Members</h3>
+{% if persons %}
+<figure>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Aliases</th>
+            <th>Company</th>
+            <th>Forward Number</th>
+            <th>Calendar</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in persons %}
+        <tr>
+            <td>
+                {{ p.name }}
+                {% if p.is_owner %}<mark>owner</mark>{% endif %}
+            </td>
+            <td>{{ p.aliases or '-' }}</td>
+            <td>{{ p.persona_name or '-' }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</td>
+            <td>{{ p.forward_number or '-' }}</td>
+            <td>{{ p.calendar_type or 'none' }}</td>
+            <td>
+                <a href="{{ url_for('persons.edit', person_id=p.id) }}" role="button" class="outline secondary" style="padding:0.25rem 0.5rem">Edit</a>
+                <form method="post" action="{{ url_for('persons.delete', person_id=p.id) }}" style="display:inline">
+                    <button type="submit" class="outline secondary" style="padding:0.25rem 0.5rem" onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</figure>
+{% else %}
+<p>No team members configured. Add people so the AI can check their calendar and forward calls to them.</p>
+{% endif %}
+{% endblock %}

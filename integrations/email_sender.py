@@ -31,13 +31,15 @@ class EmailSender:
             "email_from": get_config("actions.email_from", db_path=self.db_path),
         }
 
-    def _render_summary(self, caller_name, caller_number, reason, transcript, action_taken):
+    def _render_summary(self, caller_name, caller_number, reason, transcript, action_taken, persona_name="Unknown", dialed_did="Unknown"):
         """Return a formatted plain-text call summary."""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return (
             f"Call Summary\n"
             f"{'=' * 40}\n\n"
             f"Time:         {timestamp}\n"
+            f"Persona:      {persona_name}\n"
+            f"DID Called:    {dialed_did}\n"
             f"Caller:       {caller_name}\n"
             f"Number:       {caller_number}\n"
             f"Reason:       {reason}\n"
@@ -47,19 +49,19 @@ class EmailSender:
             f"{transcript}\n"
         )
 
-    def send_call_summary(self, caller_name, caller_number, reason, transcript, action_taken):
+    def send_call_summary(self, caller_name, caller_number, reason, transcript, action_taken, persona_name="Unknown", dialed_did="Unknown"):
         """Construct and send a call summary email. Returns True on success, False on failure."""
         cfg = self._get_smtp_config()
         if not cfg:
             logger.warning("SMTP not configured — skipping email notification")
             return False
 
-        body = self._render_summary(caller_name, caller_number, reason, transcript, action_taken)
+        body = self._render_summary(caller_name, caller_number, reason, transcript, action_taken, persona_name=persona_name, dialed_did=dialed_did)
 
         msg = MIMEMultipart()
         msg["From"] = cfg["email_from"]
         msg["To"] = cfg["email_to"]
-        msg["Subject"] = f"Call Summary: {caller_name} — {reason}"
+        msg["Subject"] = f"[{persona_name}] Call from {caller_name} ({caller_number})"
         msg.attach(MIMEText(body, "plain"))
 
         try:

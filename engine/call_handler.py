@@ -1,14 +1,19 @@
 """
 Call handler — wires AudioSocket ↔ STT ↔ LLM ↔ TTS.
 
+STREAMING PIPELINE: LLM tokens stream in, get buffered into sentences,
+each sentence is synthesized and played immediately. The caller hears
+the first sentence ~2-3s after speaking instead of ~18s.
+
 CRITICAL: Asterisk app_audiosocket has a 2-second inactivity timeout.
 We MUST send audio frames continuously or the call drops.
-Solution: a background task sends silence frames every 20ms for the
-entire call duration. TTS and conversation happen on top of that.
 """
 import asyncio
 import json
 import logging
+import math
+import os
+import re
 import struct
 import subprocess
 from datetime import datetime
@@ -38,6 +43,24 @@ _vosk_model = None
 _SILENCE_PCM = b'\x00' * 320
 _SILENCE_FRAME = AudioSocketProtocol.build_audio_frame(_SILENCE_PCM)
 
+# Beep tone: 800Hz sine wave, 0.3 seconds, at 8kHz sample rate
+def _generate_beep(freq=800, duration=0.3, volume=0.5):
+    """Generate a short beep as 8kHz 16-bit PCM."""
+    num_samples = int(ASTERISK_SAMPLE_RATE * duration)
+    samples = []
+    for i in range(num_samples):
+        t = i / ASTERISK_SAMPLE_RATE
+        # Fade in/out to avoid clicks (10ms ramp)
+        ramp = min(i / 80, 1.0, (num_samples - i) / 80)
+        val = int(volume * 32767 * ramp * math.sin(2 * math.pi * freq * t))
+        samples.append(max(-32768, min(32767, val)))
+    return struct.pack(f"<{len(samples)}h", *samples)
+
+_BEEP_PCM = _generate_beep()
+
+# Sentence boundary regex — split on . ! ? followed by space or end
+_SENTENCE_RE = re.compile(r'(?<=[.!?])\s+|(?<=[.!?])$')
+
 
 def init_vosk_model():
     """Pre-load Vosk STT model at engine startup."""
@@ -59,44 +82,144 @@ def _rms(audio: bytes) -> float:
 
 
 def _synthesize_tts_sync(text: str, db_path: str = None) -> bytes:
-    """Synthesize text to 8kHz signed-linear PCM via Piper WAV → sox resample."""
-    voice = get_config("ai.tts_voice", default="en-us-amy-medium", db_path=db_path)
+    """Synthesize text to 8kHz signed-linear PCM via Piper → sox pipe (no temp files)."""
+    voice = get_config("ai.tts_voice", default="en_GB-alba-medium", db_path=db_path)
     model_path = f"{PIPER_MODEL_DIR}/{voice}.onnx"
     try:
-        import tempfile, os
-        # Step 1: Piper → WAV file (22050Hz)
-        wav_fd, wav_path = tempfile.mkstemp(suffix=".wav")
-        os.close(wav_fd)
-        raw_fd, raw_path = tempfile.mkstemp(suffix=".raw")
-        os.close(raw_fd)
+        piper_cmd = [
+            PIPER_BIN, "--model", model_path,
+            "--output_raw", "--length_scale", "0.85",
+        ]
+        sox_cmd = [
+            "sox", "-t", "raw", "-r", "22050", "-b", "16", "-e", "signed-integer", "-c", "1", "-L", "-",
+            "-t", "raw", "-r", "8000", "-b", "16", "-e", "signed-integer", "-c", "1", "-L", "-",
+        ]
 
-        try:
-            piper_result = subprocess.run(
-                [PIPER_BIN, "--model", model_path, "-f", wav_path],
-                input=text.encode(), capture_output=True, timeout=30,
-            )
-            if piper_result.returncode != 0:
-                logger.error(f"Piper failed: {piper_result.stderr.decode()[:200]}")
+        piper_proc = subprocess.Popen(
+            piper_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        sox_proc = subprocess.Popen(
+            sox_cmd, stdin=piper_proc.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        piper_proc.stdout.close()
+
+        piper_proc.stdin.write(text.encode())
+        piper_proc.stdin.close()
+
+        pcm_data, sox_err = sox_proc.communicate(timeout=30)
+        piper_proc.wait(timeout=5)
+
+        if piper_proc.returncode != 0:
+            stderr = piper_proc.stderr.read().decode()[:200]
+            if "DiscoverDevicesForPlatform" not in stderr:
+                logger.error(f"Piper failed (rc={piper_proc.returncode}): {stderr}")
                 return b""
 
-            # Step 2: sox WAV → raw 8kHz slin (high quality resample)
-            sox_result = subprocess.run(
-                ["sox", wav_path, "-t", "raw", "-r", "8000", "-b", "16",
-                 "-e", "signed-integer", "-c", "1", "-L", raw_path],
-                capture_output=True, timeout=15,
-            )
-            if sox_result.returncode != 0:
-                logger.error(f"Sox failed: {sox_result.stderr.decode()[:200]}")
-                return b""
+        if sox_proc.returncode != 0:
+            logger.error(f"Sox failed: {sox_err.decode()[:200]}")
+            return b""
 
-            with open(raw_path, "rb") as f:
-                return f.read()
-        finally:
-            os.unlink(wav_path)
-            os.unlink(raw_path)
+        return pcm_data
     except Exception as e:
         logger.error(f"TTS error: {e}")
         return b""
+
+
+def _stream_llm_sentences(llm_client, user_message, system_prompt, history):
+    """Stream LLM and yield complete sentences as soon as they form.
+
+    Instead of waiting for the full LLM response (5-10s), this yields
+    each sentence as it completes (~1-2s for the first one).
+    """
+    buffer = ""
+    for chunk in llm_client.chat_stream(user_message, system_prompt=system_prompt, history=history):
+        buffer += chunk
+        # Check for sentence boundaries
+        parts = _SENTENCE_RE.split(buffer)
+        if len(parts) > 1:
+            # Yield all complete sentences, keep the incomplete remainder
+            for sentence in parts[:-1]:
+                sentence = sentence.strip()
+                if sentence:
+                    yield sentence
+            buffer = parts[-1]
+    # Yield any remaining text
+    remainder = buffer.strip()
+    if remainder:
+        yield remainder
+
+
+def _resolve_person_forward(response_text, persona_id, db_path=None):
+    """Check if the LLM response mentions connecting to a specific person.
+    Returns that person's forward number, or None to use the default."""
+    if not persona_id:
+        return None
+    try:
+        from db.connection import get_db_connection
+        conn = get_db_connection(db_path)
+        persons = conn.execute(
+            "SELECT name, aliases, forward_number FROM persons WHERE persona_id = ? AND enabled = 1",
+            (persona_id,),
+        ).fetchall()
+        conn.close()
+
+        response_lower = response_text.lower()
+        for person in persons:
+            # Check name
+            if person["name"].lower() in response_lower:
+                if person["forward_number"]:
+                    logger.info(f"Person match: {person['name']} → {person['forward_number']}")
+                    return person["forward_number"]
+            # Check aliases
+            if person["aliases"]:
+                for alias in person["aliases"].split(","):
+                    alias = alias.strip().lower()
+                    if alias and alias in response_lower:
+                        if person["forward_number"]:
+                            logger.info(f"Person alias match: {alias} ({person['name']}) → {person['forward_number']}")
+                            return person["forward_number"]
+    except Exception as e:
+        logger.error(f"Person lookup failed: {e}")
+    return None
+
+
+async def _redirect_to_forward(db_path=None, forward_number=None):
+    """Redirect the active inbound channel to the forward dialplan context.
+
+    Finds the PJSIP/inbound-endpoint-* channel and sends it to forward,s,1.
+    This pulls the call out of AudioSocket and into the Dial() for forwarding.
+    """
+    fwd = forward_number or get_config("sip.forward_number", db_path=db_path)
+    if not fwd:
+        logger.warning("No forward number configured")
+        return
+
+    try:
+        # Find the active inbound channel (need sudo — engine runs as voicesec)
+        result = subprocess.run(
+            ["sudo", "/usr/sbin/asterisk", "-rx", "core show channels concise"],
+            capture_output=True, timeout=5, text=True)
+        channel_name = None
+        for line in result.stdout.splitlines():
+            # Format: channel!context!ext!prio!state!app!data!...
+            if line.startswith("PJSIP/inbound-endpoint"):
+                channel_name = line.split("!")[0]
+                break
+        if channel_name:
+            # Set the forward number on the channel, then redirect
+            logger.info(f"Redirecting {channel_name} → forward,s,1 (to {fwd})")
+            subprocess.run(
+                ["sudo", "/usr/sbin/asterisk", "-rx",
+                 f"dialplan set chanvar {channel_name} FORWARD_TO {fwd}"],
+                capture_output=True, timeout=5)
+            subprocess.run(
+                ["sudo", "/usr/sbin/asterisk", "-rx",
+                 f"channel redirect {channel_name} forward,s,1"],
+                capture_output=True, timeout=5)
+        else:
+            logger.warning(f"No inbound channel found. Output: {result.stdout[:200]} stderr: {result.stderr[:200]}")
+    except Exception as e:
+        logger.error(f"Forward redirect failed: {e}")
 
 
 class AudioBridge:
@@ -105,16 +228,14 @@ class AudioBridge:
 
     def __init__(self, writer: asyncio.StreamWriter):
         self.writer = writer
-        self._playing = asyncio.Event()  # Set when TTS audio is being played
+        self._playing = asyncio.Event()
         self._alive = True
         self._task = None
 
     async def start(self):
-        """Start the background silence sender."""
         self._task = asyncio.create_task(self._run())
 
     async def _run(self):
-        """Send silence frames every 20ms unless TTS is playing."""
         try:
             while self._alive:
                 if not self._playing.is_set():
@@ -143,6 +264,10 @@ class AudioBridge:
         finally:
             self._playing.clear()
 
+    async def play_beep(self):
+        """Play a short beep tone to signal 'leave a message'."""
+        await self.play_audio(_BEEP_PCM)
+
     async def synthesize_and_play(self, text: str, db_path: str = None):
         """Synthesize TTS in background thread, then play audio."""
         if not text:
@@ -156,6 +281,46 @@ class AudioBridge:
         else:
             logger.warning("TTS produced no audio")
 
+    async def stream_llm_and_speak(self, llm_client, user_message, system_prompt, history, db_path=None):
+        """Stream LLM response sentence-by-sentence, synthesize and play each immediately.
+
+        Uses a queue so LLM generation continues while TTS synthesizes/plays.
+        First sentence arrives ~1-2s, gets spoken while the rest generates.
+        """
+        loop = asyncio.get_event_loop()
+        queue = asyncio.Queue()
+        full_response = ""
+
+        def _produce_sentences():
+            """Run in thread: stream LLM tokens, push sentences to queue."""
+            try:
+                for sentence in _stream_llm_sentences(llm_client, user_message, system_prompt, history):
+                    asyncio.run_coroutine_threadsafe(queue.put(sentence), loop)
+            except Exception as e:
+                logger.error(f"LLM stream error: {e}")
+            finally:
+                asyncio.run_coroutine_threadsafe(queue.put(None), loop)  # sentinel
+
+        # Start LLM streaming in background thread
+        loop.run_in_executor(None, _produce_sentences)
+
+        # Consume sentences: synthesize + play each as it arrives
+        idx = 0
+        while True:
+            sentence = await queue.get()
+            if sentence is None:
+                break
+            idx += 1
+            full_response += (" " if full_response else "") + sentence
+            logger.info(f"LLM sentence [{idx}]: '{sentence}'")
+
+            audio = await loop.run_in_executor(None, _synthesize_tts_sync, sentence, db_path)
+            if audio:
+                await self.play_audio(audio)
+                logger.info(f"TTS chunk [{idx}] played: {len(audio)} bytes ({len(audio)/(8000*2):.1f}s)")
+
+        return full_response
+
     def stop(self):
         self._alive = False
         if self._task:
@@ -163,21 +328,58 @@ class AudioBridge:
 
 
 async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-    """Handle one phone call."""
+    """Handle one phone call with streaming LLM→TTS pipeline."""
     db_path = DEFAULT_DB_PATH
     caller_number = "unknown"
     started_at = datetime.now()
     logger.info(f"Call started: {call_uuid}")
 
-    # Start the audio bridge — sends silence continuously from this moment
+    # Get caller ID from Asterisk and dialed DID from temp file written by dialplan
+    dialed_did = None
+    try:
+        # Read DID from temp file (written by extensions.conf System() before AudioSocket)
+        did_file = f"/tmp/did_{call_uuid}"
+        for _ in range(5):  # Retry briefly — file may not exist yet
+            if os.path.exists(did_file):
+                with open(did_file) as f:
+                    did_val = f.read().strip()
+                if did_val and did_val != "(None)" and did_val != "s":
+                    dialed_did = did_val
+                break
+            await asyncio.sleep(0.1)
+
+        # Get caller ID from Asterisk channel list
+        result = subprocess.run(
+            ["sudo", "/usr/sbin/asterisk", "-rx", "core show channels verbose"],
+            capture_output=True, timeout=3, text=True)
+        for line in result.stdout.splitlines():
+            if "AudioSocket" in line:
+                parts = line.split()
+                for p in parts:
+                    if len(p) >= 6 and p.replace("+", "").isdigit():
+                        if caller_number == "unknown":
+                            caller_number = p
+                        break
+
+        if caller_number != "unknown":
+            logger.info(f"Caller ID: {caller_number}")
+        if dialed_did:
+            logger.info(f"Dialed DID: {dialed_did}")
+        else:
+            logger.warning(f"Could not determine dialed DID (file {did_file} not found or empty)")
+    except Exception as e:
+        logger.debug(f"Could not get call info: {e}")
+
     bridge = AudioBridge(writer)
     await bridge.start()
 
     session = None
     try:
-        # Quick setup (all fast — no blocking)
-        persona = resolve_persona(caller_number, db_path)
+        # Resolve persona by dialed DID (which number was called), not caller number
+        persona = resolve_persona(dialed_did or caller_number, db_path)
         persona_id = persona["id"] if persona else None
+        if persona and dialed_did:
+            logger.info(f"Persona '{persona.get('name')}' matched for DID {dialed_did}")
 
         from db.connection import get_db_connection
         conn = get_db_connection(db_path)
@@ -202,13 +404,31 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
         recognizer = None
         if _vosk_model:
             import vosk
-            # Vosk model expects 16kHz — we'll resample 8kHz→16kHz before feeding
             recognizer = vosk.KaldiRecognizer(_vosk_model, 16000)
 
-        # Send greeting (silence keeps flowing in background while Piper runs)
+        # Send greeting — different for vacation, outside hours, or normal
         if session.vacation_active:
             await bridge.synthesize_and_play(session.vacation_message, db_path)
             await bridge.synthesize_and_play("Would you like to leave a message?", db_path)
+            await bridge.play_beep()
+        elif session.outside_hours:
+            company = persona.get("company_name") if persona else get_config("persona.company_name", "the company", db_path)
+            start = get_config("availability.business_hours_start", "09:00", db_path)
+            end = get_config("availability.business_hours_end", "17:00", db_path)
+            await bridge.synthesize_and_play(
+                f"Thank you for calling {company}. We are currently closed. "
+                f"Our business hours are {start} to {end}, Monday to Friday.", db_path)
+            await bridge.synthesize_and_play(
+                "Please leave your name, number, and a brief message, and we'll get back to you.", db_path)
+            await bridge.play_beep()
+            session.system_prompt += "\nIMPORTANT: It is outside business hours. Take a message. Ask for name, number, and reason."
+            logger.info("Outside business hours — taking messages")
+        elif session.forced_unavailable:
+            await bridge.synthesize_and_play(session.get_greeting_text(), db_path)
+            unavail = get_config("persona.unavailable_message", "They are not available right now.", db_path)
+            await bridge.synthesize_and_play(unavail, db_path)
+            await bridge.play_beep()
+            session.system_prompt += "\nIMPORTANT: The person is unavailable. Take a message."
         else:
             await bridge.synthesize_and_play(session.get_greeting_text(), db_path)
 
@@ -258,7 +478,6 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
 
                 transcript = ""
                 if recognizer:
-                    # Resample 8kHz → 16kHz for Vosk (linear interpolation)
                     raw_8k = bytes(audio_buffer)
                     samples_8k = struct.unpack(f"<{len(raw_8k) // 2}h", raw_8k)
                     samples_16k = []
@@ -274,27 +493,90 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                 audio_buffer.clear()
                 logger.info(f"STT [{turn_count}]: '{transcript}'")
 
-                response_text = session.process_turn(transcript)
-                logger.info(f"LLM [{turn_count}]: '{response_text[:100]}'")
+                # Handle silence from caller
+                if not transcript:
+                    session.silence_count += 1
+                    if session.silence_count >= 3:
+                        await bridge.synthesize_and_play("I haven't heard anything. Goodbye.", db_path)
+                        break
+                    await bridge.synthesize_and_play("Are you still there?", db_path)
+                    continue
 
-                if session.action_taken == "forwarded":
-                    await bridge.synthesize_and_play(response_text, db_path)
-                    fwd = get_config("sip.forward_number", db_path=db_path)
-                    if fwd:
-                        try:
-                            subprocess.run(
-                                ["/usr/sbin/asterisk", "-rx",
-                                 f"channel redirect {call_uuid} forward,s,1"],
-                                capture_output=True, timeout=5)
-                        except Exception as e:
-                            logger.error(f"Forward failed: {e}")
+                session.silence_count = 0
+
+                # --- CODE WORD: bypass LLM entirely for instant response ---
+                # Fuzzy match: Vosk often splits/mishears words.
+                # "butterfly" heard as "author fly", "butter fly", "but her fly", etc.
+                # Strategy: check if the transcript sounds close enough using
+                # multiple matching methods.
+                code_word = get_config("security.code_word", "", db_path)
+                code_word_match = False
+                if code_word:
+                    cw = code_word.lower()
+                    spoken = transcript.lower()
+                    spoken_nospace = spoken.replace(" ", "")
+                    cw_nospace = cw.replace(" ", "")
+                    # 1. Exact substring match (with or without spaces)
+                    code_word_match = cw in spoken or cw_nospace in spoken_nospace
+                    # 2. Ending match — Vosk often garbles the start but gets the ending
+                    #    "butterfly" ends with "fly", "author fly" ends with "fly"
+                    if not code_word_match and len(cw) > 4:
+                        suffix = cw_nospace[-3:]  # last 3 chars
+                        code_word_match = spoken_nospace.endswith(suffix) and len(spoken_nospace) <= len(cw_nospace) + 4
+                    # 3. Character overlap ratio — if 70%+ of chars match in order
+                    if not code_word_match and len(cw_nospace) > 3:
+                        matches = 0
+                        j = 0
+                        for c in cw_nospace:
+                            while j < len(spoken_nospace):
+                                if spoken_nospace[j] == c:
+                                    matches += 1
+                                    j += 1
+                                    break
+                                j += 1
+                        ratio = matches / len(cw_nospace)
+                        code_word_match = ratio >= 0.6 and len(spoken_nospace) <= len(cw_nospace) + 5
+                    if code_word_match:
+                        logger.info(f"Code word fuzzy match: '{spoken}' ≈ '{cw}'")
+                if code_word_match:
+                    logger.info(f"Code word detected! Forwarding call.")
+                    session.transcript.append({"role": "user", "text": transcript})
+                    await bridge.synthesize_and_play("Connecting you now.", db_path)
+                    session.action_taken = "forwarded"
+                    session.transcript.append({"role": "assistant", "text": "Connecting you now."})
+                    # Redirect the Asterisk channel to the forward context
+                    await _redirect_to_forward(db_path)
                     break
 
-                if session.state == "ending":
-                    await bridge.synthesize_and_play(response_text, db_path)
-                    break
+                session.transcript.append({"role": "user", "text": transcript})
 
-                await bridge.synthesize_and_play(response_text, db_path)
+                # Build LLM history
+                history = [
+                    {"role": "user" if t["role"] == "user" else "assistant", "content": t["text"]}
+                    for t in session.transcript[:-1]
+                ]
+
+                # STREAMING: speak each sentence as it's generated
+                t0 = datetime.now()
+                response_text = await bridge.stream_llm_and_speak(
+                    session.llm, transcript, session.system_prompt, history, db_path
+                )
+                elapsed = (datetime.now() - t0).total_seconds()
+                logger.info(f"Turn [{turn_count}] total: {elapsed:.1f}s response='{response_text[:80]}'")
+
+                session.transcript.append({"role": "assistant", "text": response_text})
+
+                # Check for call-ending keywords in the response
+                lower = response_text.lower()
+                if "goodbye" in lower or "good bye" in lower:
+                    session.state = "ending"
+                    break
+                if "connecting you" in lower:
+                    session.action_taken = "forwarded"
+                    # Check if connecting to a specific person
+                    fwd_number = _resolve_person_forward(lower, persona_id, db_path)
+                    await _redirect_to_forward(db_path, forward_number=fwd_number)
+                    break
 
             if len(audio_buffer) > ASTERISK_SAMPLE_RATE * ASTERISK_SAMPLE_WIDTH * 30:
                 audio_buffer.clear()
@@ -308,22 +590,55 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
         duration = int((datetime.now() - started_at).total_seconds())
         summary = session.end_call(reason="completed") if session else {"action_taken": "error"}
 
+        # Format transcript as readable text for email
+        transcript_lines = []
+        for entry in summary.get("transcript", []):
+            role = "Caller" if entry.get("role") == "user" else "AI"
+            transcript_lines.append(f"{role}: {entry.get('text', '')}")
+        formatted_transcript = "\n".join(transcript_lines) or "(no conversation)"
+
+        # Extract caller name and reason from transcript if not already set
+        caller_name = summary.get("caller_name", "Unknown")
+        reason = summary.get("reason", "")
+        if caller_name == "Unknown" and transcript_lines:
+            # Simple extraction: look for "my name is X" or "this is X" in caller's first turns
+            for entry in summary.get("transcript", []):
+                if entry.get("role") == "user":
+                    text = entry.get("text", "").lower()
+                    for prefix in ["my name is ", "this is ", "i'm ", "i am "]:
+                        if prefix in text:
+                            idx = text.index(prefix) + len(prefix)
+                            name_part = entry["text"][idx:].split(",")[0].split(".")[0].split(" and ")[0].strip()
+                            # Take up to 3 words as name
+                            words = name_part.split()[:3]
+                            if words:
+                                caller_name = " ".join(w.capitalize() for w in words)
+                                break
+                    if caller_name != "Unknown":
+                        break
+
+        # Build persona context for email
+        persona_name = persona.get("company_name", "Unknown") if persona else "Unknown"
+        did_display = dialed_did or "Unknown"
+
         try:
             call_id = log_call(
                 db_path=db_path, caller_number=caller_number,
-                caller_name=summary.get("caller_name", "Unknown"),
-                reason=summary.get("reason", ""),
+                caller_name=caller_name,
+                reason=reason or summary.get("action_taken", "ended"),
                 transcript=summary.get("transcript", []),
                 action_taken=summary.get("action_taken", "ended"),
                 duration_seconds=duration,
             )
             process_post_call_actions(
                 db_path=db_path, call_id=call_id,
-                caller_name=summary.get("caller_name", "Unknown"),
+                caller_name=caller_name,
                 caller_number=caller_number,
-                reason=summary.get("reason", ""),
-                transcript=str(summary.get("transcript", [])),
+                reason=reason or summary.get("action_taken", "ended"),
+                transcript=formatted_transcript,
                 action_taken=summary.get("action_taken", "ended"),
+                persona_name=persona_name,
+                dialed_did=did_display,
             )
         except Exception as e:
             logger.error(f"Post-call failed: {e}")

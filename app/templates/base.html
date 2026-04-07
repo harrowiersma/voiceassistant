@@ -27,8 +27,8 @@
             <div class="nav-group">
                 <small class="nav-group-label">Configure</small>
                 <ul>
-                    <li><a href="/personas" class="{% if request.endpoint and request.endpoint.startswith('personas') %}active{% endif %}">Personas</a></li>
-                    <li><a href="/persona" class="{% if request.endpoint == 'persona.index' %}active{% endif %}">Persona</a></li>
+                    <li><a href="/personas" class="{% if request.endpoint and (request.endpoint.startswith('personas') or request.endpoint == 'persona.index') %}active{% endif %}">Personas</a></li>
+                    <li><a href="/persons" class="{% if request.endpoint and request.endpoint.startswith('persons') %}active{% endif %}">People</a></li>
                     <li><a href="/knowledge" class="{% if request.endpoint == 'knowledge.index' %}active{% endif %}">Knowledge Base</a></li>
                     <li><a href="/availability" class="{% if request.endpoint == 'availability.index' %}active{% endif %}">Availability</a></li>
                     <li><a href="/sip" class="{% if request.endpoint == 'sip.index' %}active{% endif %}">SIP Settings</a></li>

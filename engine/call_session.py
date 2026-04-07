@@ -7,6 +7,7 @@ silence detection, vacation mode, manual override, and call ending.
 import json
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.helpers import get_config
 from db.connection import get_db_connection
@@ -59,6 +60,38 @@ class CallSession:
         override = get_config("availability.manual_override", default="auto", db_path=db_path)
         self.forced_unavailable = (override == "unavailable")
         self.forced_available = (override == "available")
+
+        # Check business hours (when override is "auto")
+        # Uses the persona's timezone so Swiss calls check CET, Portugal checks WET, etc.
+        self.outside_hours = False
+        self.persona_tz_name = None
+        if override == "auto":
+            try:
+                # Determine timezone from persona, fall back to server local time
+                tz = None
+                if self.persona and self.persona.get("timezone"):
+                    try:
+                        tz = ZoneInfo(self.persona["timezone"])
+                        self.persona_tz_name = self.persona["timezone"]
+                    except Exception:
+                        pass
+                now = datetime.now(tz) if tz else datetime.now()
+
+                start_str = get_config("availability.business_hours_start", "09:00", db_path)
+                end_str = get_config("availability.business_hours_end", "17:00", db_path)
+                start_h, start_m = map(int, start_str.split(":"))
+                end_h, end_m = map(int, end_str.split(":"))
+                start_mins = start_h * 60 + start_m
+                end_mins = end_h * 60 + end_m
+                now_mins = now.hour * 60 + now.minute
+                # Also check weekends (Saturday=5, Sunday=6)
+                if now.weekday() >= 5 or now_mins < start_mins or now_mins >= end_mins:
+                    self.outside_hours = True
+                logger.info(f"Business hours check: tz={self.persona_tz_name or 'local'} "
+                            f"now={now.strftime('%H:%M %Z %a')} hours={start_str}-{end_str} "
+                            f"outside={self.outside_hours}")
+            except Exception:
+                pass  # If parsing fails, assume open
 
     def get_greeting_text(self):
         """Return the greeting with {company} substituted."""

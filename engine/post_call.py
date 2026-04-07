@@ -29,7 +29,7 @@ def log_call(db_path, caller_number, caller_name, reason, transcript, action_tak
     return call_id
 
 
-def process_post_call_actions(db_path, call_id, caller_name, caller_number, reason, transcript, action_taken):
+def process_post_call_actions(db_path, call_id, caller_name, caller_number, reason, transcript, action_taken, persona_name="Unknown", dialed_did="Unknown"):
     """Decide whether to send email based on config, then update the call record."""
     notify_on = get_config("actions.notify_on", "never", db_path=db_path)
 
@@ -44,7 +44,7 @@ def process_post_call_actions(db_path, call_id, caller_name, caller_number, reas
 
     if should_email:
         sender = EmailSender(db_path)
-        email_sent = sender.send_call_summary(caller_name, caller_number, reason, transcript, action_taken)
+        email_sent = sender.send_call_summary(caller_name, caller_number, reason, transcript, action_taken, persona_name=persona_name, dialed_did=dialed_did)
 
     # Update the call record with action flags
     conn = get_db_connection(db_path)
