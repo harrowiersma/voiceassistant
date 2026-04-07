@@ -36,9 +36,10 @@ class LLMClient:
                 "model": self.model,
                 "messages": messages,
                 "stream": False,
+                "keep_alive": "30m",
                 "options": {
-                    "num_predict": 60,
-                    "temperature": 0.7,
+                    "num_predict": 40,
+                    "temperature": 0.5,
                 },
             }
             if tools:
@@ -71,9 +72,10 @@ class LLMClient:
                 "model": self.model,
                 "messages": messages,
                 "stream": True,
+                "keep_alive": "30m",
                 "options": {
-                    "num_predict": 60,
-                    "temperature": 0.7,
+                    "num_predict": 40,
+                    "temperature": 0.5,
                 },
             }
             data = json.dumps(body).encode()
