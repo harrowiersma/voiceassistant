@@ -108,7 +108,7 @@
 
         <div class="form-section">
             <h3>Microsoft Graph Setup</h3>
-            <p class="help-text">Register an app in Azure Active Directory to connect Teams presence and Outlook calendar. You need the Client ID, Client Secret, and Tenant ID from your Azure App Registration.</p>
+            <p class="help-text">Register an app in Azure Active Directory. The app uses client credentials to check Teams presence for each person by their email address.</p>
             <label>
                 Client ID
                 <input type="text" name="graph.client_id" value="{{ values['graph.client_id'] }}">
@@ -121,11 +121,14 @@
                 Tenant ID
                 <input type="text" name="graph.tenant_id" value="{{ values['graph.tenant_id'] }}">
             </label>
+            {% if graph_configured %}
+            <p><span class="status-badge"><span class="status-dot ok"></span> Configured</span> — presence is checked per person using their email address.</p>
+            {% endif %}
         </div>
 
         <div class="form-section">
             <h3>Google Calendar Setup</h3>
-            <p class="help-text">Create OAuth 2.0 credentials in the <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a>. Enable the Google Calendar API, then enter your Client ID and Secret here.</p>
+            <p class="help-text">Create OAuth 2.0 credentials in the <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a>. These credentials are shared, but each person connects their own Google account from their <a href="/persons">edit page</a>.</p>
             <label>
                 Client ID
                 <input type="text" name="google.client_id" value="{{ values['google.client_id'] }}">
@@ -134,10 +137,21 @@
                 Client Secret
                 <input type="password" name="google.client_secret" value="{{ values['google.client_secret'] }}">
             </label>
-            {% if google_connected %}
-            <p><span class="status-badge"><span class="status-dot ok"></span> Google Calendar connected</span></p>
-            {% elif values['google.client_id'] %}
-            <p class="help-text">Credentials saved. After saving, click the button below to authorize access.</p>
+
+            {% if google_persons %}
+            <p class="help-text" style="margin-top:var(--space-md)">Connected accounts:</p>
+            {% for p in google_persons %}
+            <p><span class="status-badge"><span class="status-dot ok"></span> {{ p.name }}</span></p>
+            {% endfor %}
+            {% endif %}
+
+            {% if google_global %}
+            <p><span class="status-badge"><span class="status-dot idle"></span> Global fallback connected</span>
+            <span class="help-text">— used for people without their own Google connection.</span></p>
+            {% endif %}
+
+            {% if not google_persons and not google_global and values['google.client_id'] %}
+            <p class="help-text">Credentials saved. Connect individual accounts from each person's <a href="/persons">edit page</a>.</p>
             {% endif %}
         </div>
 
@@ -146,20 +160,11 @@
         </div>
     </form>
 
-    {% if values['google.client_id'] and not google_connected %}
+    {% if values['google.client_id'] and not google_global %}
     <div class="form-section" style="margin-top:var(--space-md)">
-        <h3>Connect Google Account</h3>
-        <p class="help-text">After saving your credentials above, click here to authorize Voice Secretary to read your Google Calendar.</p>
-        <a href="{{ url_for('google_oauth.authorize') }}" role="button">Connect Google Calendar</a>
-    </div>
-    {% endif %}
-
-    {% if google_connected %}
-    <div class="form-section" style="margin-top:var(--space-md)">
-        <h3>Google Calendar</h3>
-        <p><span class="status-badge"><span class="status-dot ok"></span> Connected and active</span></p>
-        <p class="help-text">To reconnect with a different account, click below.</p>
-        <a href="{{ url_for('google_oauth.authorize') }}" role="button" class="outline secondary">Reconnect Google Calendar</a>
+        <h3>Global Fallback (optional)</h3>
+        <p class="help-text">Connect a default Google account used for people who don't have their own. Most setups don't need this — connect accounts per person instead.</p>
+        <a href="{{ url_for('google_oauth.authorize') }}" role="button" class="outline secondary">Connect Global Fallback</a>
     </div>
     {% endif %}
 </div>
