@@ -669,11 +669,12 @@ button[type="submit"],
 .form-actions a[role="button"],
 .form-section button[type="submit"] {
     width: auto !important;
-    padding: 0.5rem 1.5rem !important;
-    font-size: var(--text-base) !important;
+    padding: 0.4rem 1.2rem !important;
+    font-size: var(--text-sm) !important;
     border-radius: var(--radius-md) !important;
     margin-bottom: 0 !important;
     cursor: pointer;
+    font-weight: 500;
 }
 
 /* Primary buttons: teal accent */
@@ -692,8 +693,8 @@ button.secondary,
 a[role="button"].secondary,
 a[role="button"].outline {
     width: auto !important;
-    padding: 0.5rem 1.5rem !important;
-    font-size: var(--text-base) !important;
+    padding: 0.4rem 1.2rem !important;
+    font-size: var(--text-sm) !important;
     border-radius: var(--radius-md) !important;
 }
 
@@ -702,8 +703,8 @@ a[role="button"].outline {
 .empty-state a[role="button"] {
     display: inline-block !important;
     width: auto !important;
-    padding: 0.5rem 1.5rem !important;
-    font-size: var(--text-base) !important;
+    padding: 0.4rem 1.2rem !important;
+    font-size: var(--text-sm) !important;
 }
 
 /* Form button row (Save / Cancel) */
@@ -735,11 +736,13 @@ a[role="button"].outline {
     background: var(--bg-card);
     border: var(--card-border);
     border-radius: var(--radius-md);
-    padding: var(--space-md) var(--space-lg);
-    margin-bottom: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-sm);
 }
 .form-section h3 {
     margin-top: 0;
+    font-size: var(--text-xs);
+    margin-bottom: var(--space-xs);
 }
 
 /* Page description text */
@@ -794,6 +797,94 @@ a[role="button"].outline {
     background: rgba(231, 76, 60, 0.1);
     border: 1px solid rgba(231, 76, 60, 0.3);
     border-radius: var(--radius-md);
+}
+
+/* ===== Apple-Style Overrides (Pico CSS refinement) ===== */
+
+/* Form inputs: compact, proportional to surrounding text */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+    font-size: var(--text-sm) !important;
+    padding: 0.4rem 0.6rem !important;
+    border-radius: var(--radius-sm) !important;
+    margin-bottom: var(--space-xs) !important;
+    line-height: 1.4 !important;
+}
+textarea {
+    min-height: 56px;
+    resize: vertical;
+}
+
+/* Labels: restrained */
+label {
+    font-size: var(--text-sm) !important;
+    font-weight: 500 !important;
+    margin-bottom: 0.15rem !important;
+}
+
+/* Checkboxes: tighter spacing */
+label:has(input[type="checkbox"]) {
+    font-size: var(--text-sm) !important;
+    gap: var(--space-xs);
+}
+
+/* Grid form layouts: tighter gap */
+.grid {
+    gap: var(--space-sm) !important;
+}
+
+/* Tables: compact, data-dense */
+table th,
+table td {
+    padding: 0.35rem 0.6rem !important;
+    font-size: var(--text-sm) !important;
+}
+table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: var(--text-xs) !important;
+    color: var(--text-secondary);
+}
+
+/* Details/summary: refined toggle */
+details > summary[role="button"] {
+    font-size: var(--text-sm) !important;
+    padding: 0.4rem 0.8rem !important;
+    width: auto !important;
+    display: inline-flex !important;
+}
+
+/* Mark/badge: small pills */
+mark {
+    font-size: var(--text-xs) !important;
+    padding: 0.1rem 0.4rem !important;
+    border-radius: 10px !important;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* Page title: refined */
+.content-header h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* Small/help text within forms */
+small, .help-text {
+    font-size: var(--text-xs) !important;
+}
+
+/* Pico grid override: less vertical space between rows */
+.grid + .grid {
+    margin-top: 0 !important;
+}
+
+/* Data card values: slightly smaller */
+.data-card .value {
+    font-size: 1rem;
 }
 
 /* ===== Focus Styles ===== */
