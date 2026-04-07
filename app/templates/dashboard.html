@@ -105,7 +105,7 @@
     </div>
 </div>
 
-<!-- Recent Calls (shown when system is configured) -->
+<!-- Recent Calls -->
 <div id="recent-calls-section">
     <h2>Recent Calls</h2>
     <div class="empty-state" id="recent-calls-empty">
@@ -114,6 +114,40 @@
     </div>
     <div id="recent-calls-list" style="display:none;"></div>
 </div>
+
+<script>
+// Load recent calls
+function loadRecentCalls() {
+    fetch('/api/calls?limit=5')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var calls = data.calls || [];
+        if (calls.length === 0) return;
+        document.getElementById('recent-calls-empty').style.display = 'none';
+        var list = document.getElementById('recent-calls-list');
+        list.style.display = 'block';
+        var html = '<table><thead><tr>' +
+            '<th scope="col">Time</th><th scope="col">Caller</th>' +
+            '<th scope="col">Duration</th><th scope="col">Action</th></tr></thead><tbody>';
+        calls.forEach(function(c) {
+            var time = c.started_at ? c.started_at.substring(0, 16).replace('T', ' ') : '—';
+            var caller = c.caller_name || c.caller_number || 'Unknown';
+            var dur = '—';
+            if (c.duration_seconds != null) {
+                var m = Math.floor(c.duration_seconds / 60);
+                var s = c.duration_seconds % 60;
+                dur = m + ':' + (s < 10 ? '0' : '') + s;
+            }
+            var action = (c.action_taken || '—').replace(/_/g, ' ');
+            html += '<tr><td>' + time + '</td><td>' + caller + '</td><td>' + dur + '</td><td>' + action + '</td></tr>';
+        });
+        html += '</tbody></table><a href="/calls" class="help-text">View all calls</a>';
+        list.innerHTML = html;
+    })
+    .catch(function() {});
+}
+loadRecentCalls();
+</script>
 
 <script>
 // Health banner

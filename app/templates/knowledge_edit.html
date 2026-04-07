@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block page_title %}Edit Rule{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <p class="flash-{{ category }}">{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="edit-form">
+    <form method="post" action="{{ url_for('knowledge.edit', rule_id=rule.id) }}">
+        <div class="form-section">
+            <h3>Rule</h3>
+            <div class="grid">
+                <label>
+                    Rule Type
+                    <select name="rule_type">
+                        {% for t in ['topic', 'redirect', 'vacation', 'info', 'custom'] %}
+                        <option value="{{ t }}" {{ 'selected' if rule.rule_type == t }}>{{ t | title }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Persona
+                    <select name="persona_id">
+                        <option value="">All Personas (global)</option>
+                        {% for p in personas %}
+                        <option value="{{ p.id }}" {{ 'selected' if rule.persona_id == p.id }}>{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label>
+                Trigger Keywords
+                <input type="text" name="trigger_keywords" value="{{ rule.trigger_keywords or '' }}" placeholder="comma-separated keywords">
+            </label>
+            <label>
+                Response
+                <textarea name="response" rows="3" required>{{ rule.response or '' }}</textarea>
+            </label>
+        </div>
+
+        <div class="form-section">
+            <h3>Schedule</h3>
+            <div class="grid">
+                <label>
+                    Active From
+                    <input type="date" name="active_from" value="{{ rule.active_from or '' }}">
+                </label>
+                <label>
+                    Active Until
+                    <input type="date" name="active_until" value="{{ rule.active_until or '' }}">
+                </label>
+                <label>
+                    Priority
+                    <input type="number" name="priority" value="{{ rule.priority or 0 }}" min="0">
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Save Changes</button>
+            <a href="{{ url_for('knowledge.index') }}" role="button" class="outline secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

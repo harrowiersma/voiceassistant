@@ -49,6 +49,43 @@ def add():
     return redirect(url_for("knowledge.index"))
 
 
+@bp.route("/knowledge/<int:rule_id>/edit", methods=["GET", "POST"])
+def edit(rule_id):
+    db = _db_path()
+    conn = get_db_connection(db)
+
+    if request.method == "POST":
+        conn.execute(
+            """UPDATE knowledge_rules SET rule_type=?, trigger_keywords=?, response=?,
+               active_from=?, active_until=?, priority=?, persona_id=?, updated_at=CURRENT_TIMESTAMP
+               WHERE id=?""",
+            (
+                request.form.get("rule_type", "topic"),
+                request.form.get("trigger_keywords", "").strip(),
+                request.form.get("response", "").strip(),
+                request.form.get("active_from", "").strip() or None,
+                request.form.get("active_until", "").strip() or None,
+                int(request.form.get("priority", 0)),
+                int(request.form["persona_id"]) if request.form.get("persona_id") else None,
+                rule_id,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        flash("Rule updated.", "success")
+        return redirect(url_for("knowledge.index"))
+
+    rule = conn.execute("SELECT * FROM knowledge_rules WHERE id = ?", (rule_id,)).fetchone()
+    personas = conn.execute(
+        "SELECT id, name FROM personas WHERE enabled = 1 ORDER BY is_default DESC, name"
+    ).fetchall()
+    conn.close()
+    if not rule:
+        flash("Rule not found.", "error")
+        return redirect(url_for("knowledge.index"))
+    return render_template("knowledge_edit.html", rule=dict(rule), personas=personas)
+
+
 @bp.route("/knowledge/<int:rule_id>/toggle", methods=["POST"])
 def toggle(rule_id):
     conn = get_db_connection(_db_path())

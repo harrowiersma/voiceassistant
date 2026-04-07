@@ -193,14 +193,16 @@ def calls_list():
     db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
     conn = get_db_connection(db_path)
     action_filter = request.args.get("action")
+    limit = min(int(request.args.get("limit", 100)), 500)
     if action_filter:
         calls = conn.execute(
-            "SELECT * FROM calls WHERE action_taken = ? ORDER BY started_at DESC LIMIT 100",
-            (action_filter,),
+            "SELECT * FROM calls WHERE action_taken = ? ORDER BY started_at DESC LIMIT ?",
+            (action_filter, limit),
         ).fetchall()
     else:
         calls = conn.execute(
-            "SELECT * FROM calls ORDER BY started_at DESC LIMIT 100"
+            "SELECT * FROM calls ORDER BY started_at DESC LIMIT ?",
+            (limit,),
         ).fetchall()
     conn.close()
     return jsonify({"calls": [dict(c) for c in calls]})
