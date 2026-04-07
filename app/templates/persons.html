@@ -41,20 +41,19 @@
                     <input type="text" name="forward_number" placeholder="+351924878258">
                 </label>
             </div>
-            <div class="grid">
-                <label>
-                    Calendar Type
-                    <select name="calendar_type">
-                        <option value="none">None</option>
-                        <option value="msgraph">Microsoft Graph (Teams)</option>
-                        <option value="google">Google Calendar</option>
-                    </select>
-                </label>
-                <label>
-                    Email
-                    <input type="email" name="email" placeholder="harro@xappo.mt">
-                </label>
-            </div>
+            <label>
+                Email
+                <input type="email" name="email" placeholder="harro@xappo.mt">
+            </label>
+            <p class="help-text">Calendar sources (check all that apply):</p>
+            <label>
+                <input type="checkbox" name="calendar_types" value="msgraph">
+                Microsoft Graph (Teams presence + Outlook)
+            </label>
+            <label>
+                <input type="checkbox" name="calendar_types" value="google">
+                Google Calendar
+            </label>
             <label>
                 <input type="checkbox" name="is_owner" value="1">
                 Owner / primary contact (receives forwarded calls by default)

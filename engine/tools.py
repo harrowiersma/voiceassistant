@@ -111,18 +111,63 @@ _PRESENCE_ACTION = {
 # ── Handler functions ──────────────────────────────────────────────────
 
 
-def _handle_check_availability(arguments, db_path=None, mock_presence=None):
-    """Check Teams presence; use *mock_presence* in tests."""
+def _handle_check_availability(arguments, db_path=None, mock_presence=None,
+                               person=None):
+    """Check availability across all configured calendar sources for a person.
+
+    Merges results: if ANY source says busy/dnd, the person is unavailable.
+    Supports per-person multi-calendar (calendar_type='msgraph,google').
+    """
     if mock_presence is not None:
-        status = mock_presence
-    else:
-        from integrations.msgraph import MSGraphClient
-        client = MSGraphClient(db_path=db_path)
-        status = client.check_presence()
+        return {
+            "status": mock_presence,
+            "action": _PRESENCE_ACTION.get(mock_presence, "take_message"),
+        }
+
+    # Determine which calendar sources to check
+    cal_types = []
+    if person and person.get("calendar_type"):
+        cal_types = [c.strip() for c in person["calendar_type"].split(",") if c.strip() and c.strip() != "none"]
+
+    # Fall back to MS Graph only (legacy behaviour when no person context)
+    if not cal_types:
+        cal_types = ["msgraph"]
+
+    statuses = []
+
+    for cal in cal_types:
+        if cal == "msgraph":
+            from integrations.msgraph import MSGraphClient
+            client = MSGraphClient(db_path=db_path)
+            statuses.append(client.check_presence())
+        elif cal == "google":
+            from integrations.google_calendar import GoogleCalendarClient
+            from db.connection import get_db_connection
+            # Get Google OAuth token from DB
+            conn = get_db_connection(db_path)
+            row = conn.execute(
+                "SELECT access_token FROM oauth_tokens WHERE provider = 'google'"
+            ).fetchone()
+            conn.close()
+            token = row["access_token"] if row else None
+            if token:
+                gcal = GoogleCalendarClient(access_token=token)
+                is_busy = gcal.is_busy_now()
+                statuses.append("busy" if is_busy else "available")
+            else:
+                statuses.append("not_configured")
+
+    # Merge: worst status wins (busy > dnd > away > available)
+    priority = ["busy", "dnd", "away", "offline", "unknown", "not_configured", "available"]
+    merged = "available"
+    for s in statuses:
+        if priority.index(s) < priority.index(merged) if s in priority else False:
+            merged = s
 
     return {
-        "status": status,
-        "action": _PRESENCE_ACTION.get(status, "take_message"),
+        "status": merged,
+        "action": _PRESENCE_ACTION.get(merged, "take_message"),
+        "sources": dict(zip(cal_types, statuses)),
     }
 
 
@@ -146,13 +191,43 @@ def _handle_take_message(arguments, db_path=None, **_kw):
     }
 
 
-def _handle_suggest_callback_times(arguments, db_path=None, **_kw):
-    """Query MS Graph for free calendar slots."""
+def _handle_suggest_callback_times(arguments, db_path=None, person=None, **_kw):
+    """Query configured calendars for free slots, intersecting across sources."""
     date = arguments.get("date") or datetime.utcnow().strftime("%Y-%m-%d")
-    from integrations.msgraph import MSGraphClient
-    client = MSGraphClient(db_path=db_path)
-    slots = client.get_free_slots(date)
-    return {"date": date, "slots": slots}
+
+    cal_types = []
+    if person and person.get("calendar_type"):
+        cal_types = [c.strip() for c in person["calendar_type"].split(",") if c.strip() and c.strip() != "none"]
+    if not cal_types:
+        cal_types = ["msgraph"]
+
+    all_slots = []
+    for cal in cal_types:
+        if cal == "msgraph":
+            from integrations.msgraph import MSGraphClient
+            client = MSGraphClient(db_path=db_path)
+            all_slots.append(client.get_free_slots(date))
+        elif cal == "google":
+            from integrations.google_calendar import GoogleCalendarClient
+            from db.connection import get_db_connection
+            conn = get_db_connection(db_path)
+            row = conn.execute(
+                "SELECT access_token FROM oauth_tokens WHERE provider = 'google'"
+            ).fetchone()
+            conn.close()
+            token = row["access_token"] if row else None
+            if token:
+                gcal = GoogleCalendarClient(access_token=token)
+                all_slots.append(gcal.get_free_slots(date))
+
+    # If only one source, return its slots directly
+    if len(all_slots) <= 1:
+        return {"date": date, "slots": all_slots[0] if all_slots else []}
+
+    # Intersect free slots across sources (only times free in ALL calendars)
+    from engine.slot_intersect import intersect_free_slots
+    merged = intersect_free_slots(all_slots)
+    return {"date": date, "slots": merged}
 
 
 def _handle_end_call(arguments, db_path=None, **_kw):

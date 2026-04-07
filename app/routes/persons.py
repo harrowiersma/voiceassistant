@@ -28,6 +28,9 @@ def index():
 def add():
     db = _db_path()
     conn = get_db_connection(db)
+    # calendar_types comes as a list of checkboxes (multi-select)
+    cal_types = request.form.getlist("calendar_types")
+    calendar_type = ",".join(cal_types) if cal_types else "none"
     conn.execute(
         "INSERT INTO persons (name, aliases, persona_id, forward_number, calendar_type, email, is_owner) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -36,7 +39,7 @@ def add():
             request.form.get("aliases", ""),
             int(request.form["persona_id"]),
             request.form.get("forward_number", ""),
-            request.form.get("calendar_type", "none"),
+            calendar_type,
             request.form.get("email", ""),
             bool(request.form.get("is_owner")),
         ),
@@ -53,6 +56,8 @@ def edit(person_id):
     conn = get_db_connection(db)
 
     if request.method == "POST":
+        cal_types = request.form.getlist("calendar_types")
+        calendar_type = ",".join(cal_types) if cal_types else "none"
         conn.execute(
             "UPDATE persons SET name=?, aliases=?, persona_id=?, forward_number=?, "
             "calendar_type=?, email=?, is_owner=? WHERE id=?",
@@ -61,7 +66,7 @@ def edit(person_id):
                 request.form.get("aliases", ""),
                 int(request.form["persona_id"]),
                 request.form.get("forward_number", ""),
-                request.form.get("calendar_type", "none"),
+                calendar_type,
                 request.form.get("email", ""),
                 bool(request.form.get("is_owner")),
                 person_id,

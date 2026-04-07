@@ -54,15 +54,18 @@
         </div>
 
         <div class="form-section">
-            <h3>Calendar</h3>
+            <h3>Calendar Sources</h3>
+            <p class="help-text">Select which calendars to check for this person's availability. If any calendar shows busy, the person is considered unavailable.</p>
+            {% set cal_types = (person.calendar_type or '').split(',') %}
             <label>
-                Calendar Type
-                <select name="calendar_type">
-                    <option value="none" {{ 'selected' if person.calendar_type == 'none' }}>None</option>
-                    <option value="msgraph" {{ 'selected' if person.calendar_type == 'msgraph' }}>Microsoft Graph (Teams)</option>
-                    <option value="google" {{ 'selected' if person.calendar_type == 'google' }}>Google Calendar</option>
-                </select>
+                <input type="checkbox" name="calendar_types" value="msgraph" {{ 'checked' if 'msgraph' in cal_types }}>
+                Microsoft Graph (Teams presence + Outlook calendar)
             </label>
+            <label>
+                <input type="checkbox" name="calendar_types" value="google" {{ 'checked' if 'google' in cal_types }}>
+                Google Calendar
+            </label>
+            <p class="help-text">Configure MS Graph credentials on the <a href="/availability">Availability</a> page. Google Calendar credentials are configured there too.</p>
         </div>
 
         <div class="form-actions">

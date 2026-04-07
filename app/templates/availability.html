@@ -107,8 +107,8 @@
         </div>
 
         <div class="form-section">
-            <h3>MS Graph Setup</h3>
-            <p class="help-text">Register an app in Azure Active Directory to connect Teams presence. You need the Client ID, Client Secret, and Tenant ID from your Azure App Registration.</p>
+            <h3>Microsoft Graph Setup</h3>
+            <p class="help-text">Register an app in Azure Active Directory to connect Teams presence and Outlook calendar. You need the Client ID, Client Secret, and Tenant ID from your Azure App Registration.</p>
             <label>
                 Client ID
                 <input type="text" name="graph.client_id" value="{{ values['graph.client_id'] }}">
@@ -120,6 +120,19 @@
             <label>
                 Tenant ID
                 <input type="text" name="graph.tenant_id" value="{{ values['graph.tenant_id'] }}">
+            </label>
+        </div>
+
+        <div class="form-section">
+            <h3>Google Calendar Setup</h3>
+            <p class="help-text">Create OAuth 2.0 credentials in the <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a>. Enable the Google Calendar API, then enter your Client ID and Secret here.</p>
+            <label>
+                Client ID
+                <input type="text" name="google.client_id" value="{{ values['google.client_id'] }}">
+            </label>
+            <label>
+                Client Secret
+                <input type="password" name="google.client_secret" value="{{ values['google.client_secret'] }}">
             </label>
         </div>
 

@@ -16,6 +16,8 @@ AVAILABILITY_FIELDS = [
     "graph.client_id",
     "graph.client_secret",
     "graph.tenant_id",
+    "google.client_id",
+    "google.client_secret",
 ]
 
 
@@ -37,7 +39,14 @@ def save():
     db = _db_path()
     for key in AVAILABILITY_FIELDS:
         value = request.form.get(key, "")
-        category = "graph" if key.startswith("graph.") else "security" if key.startswith("security.") else "availability"
+        if key.startswith("graph."):
+            category = "graph"
+        elif key.startswith("google."):
+            category = "google"
+        elif key.startswith("security."):
+            category = "security"
+        else:
+            category = "availability"
         set_config(key, value, category, db_path=db)
     flash("Availability settings saved.", "success")
     return redirect(url_for("availability.index"))
