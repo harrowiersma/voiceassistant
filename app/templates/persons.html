@@ -88,10 +88,12 @@
             <td>{{ p.forward_number or '-' }}</td>
             <td>{{ p.calendar_type or 'none' }}</td>
             <td>
-                <a href="{{ url_for('persons.edit', person_id=p.id) }}" role="button" class="outline secondary btn-sm">Edit</a>
-                <form method="post" action="{{ url_for('persons.delete', person_id=p.id) }}" class="inline-form">
-                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
-                </form>
+                <div class="action-btns">
+                    <a href="{{ url_for('persons.edit', person_id=p.id) }}" role="button" class="outline secondary">Edit</a>
+                    <form method="post" action="{{ url_for('persons.delete', person_id=p.id) }}" class="inline-form">
+                        <button type="submit" class="outline secondary" onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
+                    </form>
+                </div>
             </td>
         </tr>
         {% endfor %}

@@ -81,12 +81,14 @@
             <td>{{ p.calendar_type or 'none' }}</td>
             <td>{{ p.inbound_number or '-' }}</td>
             <td>
-                <a href="{{ url_for('personas.edit', persona_id=p.id) }}" role="button" class="outline secondary btn-sm">Edit</a>
-                {% if not p.is_default %}
-                <form method="post" action="{{ url_for('personas.delete', persona_id=p.id) }}" class="inline-form">
-                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Delete persona {{ p.name }}?')">Delete</button>
-                </form>
-                {% endif %}
+                <div class="action-btns">
+                    <a href="{{ url_for('personas.edit', persona_id=p.id) }}" role="button" class="outline secondary">Edit</a>
+                    {% if not p.is_default %}
+                    <form method="post" action="{{ url_for('personas.delete', persona_id=p.id) }}" class="inline-form">
+                        <button type="submit" class="outline secondary" onclick="return confirm('Delete persona {{ p.name }}?')">Delete</button>
+                    </form>
+                    {% endif %}
+                </div>
             </td>
         </tr>
         {% endfor %}

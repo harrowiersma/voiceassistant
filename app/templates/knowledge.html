@@ -85,11 +85,13 @@
         {% for rule in rules %}
         <tr>
             <td>
-                <form method="post" action="{{ url_for('knowledge.toggle', rule_id=rule['id']) }}" class="inline-form">
-                    <button type="submit" class="outline btn-sm {% if rule['enabled'] %}contrast{% else %}secondary{% endif %}">
-                        {{ "On" if rule['enabled'] else "Off" }}
-                    </button>
-                </form>
+                <div class="action-btns">
+                    <form method="post" action="{{ url_for('knowledge.toggle', rule_id=rule['id']) }}" class="inline-form">
+                        <button type="submit" class="outline {% if rule['enabled'] %}contrast{% else %}secondary{% endif %}">
+                            {{ "On" if rule['enabled'] else "Off" }}
+                        </button>
+                    </form>
+                </div>
             </td>
             <td><mark>{{ rule['rule_type'] }}</mark></td>
             <td>{{ rule['trigger_keywords'] or '-' }}</td>
@@ -103,9 +105,11 @@
             </td>
             <td>{{ rule['priority'] }}</td>
             <td>
-                <form method="post" action="{{ url_for('knowledge.delete', rule_id=rule['id']) }}" class="inline-form">
-                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Delete this rule?')">Delete</button>
-                </form>
+                <div class="action-btns">
+                    <form method="post" action="{{ url_for('knowledge.delete', rule_id=rule['id']) }}" class="inline-form">
+                        <button type="submit" class="outline secondary" onclick="return confirm('Delete this rule?')">Delete</button>
+                    </form>
+                </div>
             </td>
         </tr>
         {% endfor %}

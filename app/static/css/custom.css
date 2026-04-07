@@ -631,23 +631,36 @@ body {
     display: inline;
     margin: 0;
 }
-.inline-form button {
-    margin-bottom: 0;
+
+/* Table action buttons — override Pico's heavy button defaults */
+.action-btns {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
 }
-.btn-sm,
-a.btn-sm[role="button"] {
-    padding: 0.25rem 0.6rem !important;
+.action-btns a[role="button"],
+.action-btns button {
+    padding: 0.3rem 0.75rem !important;
     font-size: var(--text-sm) !important;
     margin-bottom: 0 !important;
-    line-height: 1.4 !important;
+    line-height: 1.2 !important;
+    width: auto !important;
+    white-space: nowrap;
+}
+.action-btns .inline-form {
+    margin: 0;
+    display: contents;
 }
 
-/* Table action cells: consistent inline button row */
-td .btn-sm {
-    vertical-align: middle;
-}
-td .inline-form {
-    vertical-align: middle;
+/* Standalone .btn-sm for use outside action-btns */
+.btn-sm,
+a.btn-sm[role="button"],
+button.btn-sm {
+    padding: 0.3rem 0.75rem !important;
+    font-size: var(--text-sm) !important;
+    margin-bottom: 0 !important;
+    line-height: 1.2 !important;
+    width: auto !important;
 }
 
 /* Form button row (Save / Cancel) */
