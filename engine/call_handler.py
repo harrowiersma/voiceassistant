@@ -571,12 +571,22 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                 if "goodbye" in lower or "good bye" in lower:
                     session.state = "ending"
                     break
-                if "connecting you" in lower:
+                if "connecting you" in lower or "connected" in lower or "transfer" in lower or "forwarding" in lower or "put you through" in lower:
                     session.action_taken = "forwarded"
                     # Check if connecting to a specific person
                     fwd_number = _resolve_person_forward(lower, persona_id, db_path)
                     await _redirect_to_forward(db_path, forward_number=fwd_number)
                     break
+
+                # Also check if the caller asked for a team member by name
+                # (even if the LLM didn't say "connecting" — small models miss this)
+                if persona_id:
+                    fwd_number = _resolve_person_forward(transcript.lower(), persona_id, db_path)
+                    if fwd_number and ("check" in lower or "available" in lower or "let me" in lower):
+                        session.action_taken = "forwarded"
+                        await bridge.synthesize_and_play(f"Let me connect you now.", db_path)
+                        await _redirect_to_forward(db_path, forward_number=fwd_number)
+                        break
 
             if len(audio_buffer) > ASTERISK_SAMPLE_RATE * ASTERISK_SAMPLE_WIDTH * 30:
                 audio_buffer.clear()

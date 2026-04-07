@@ -108,7 +108,7 @@ def build_system_prompt_for_persona(persona_id, db_path=None):
 
     company = persona["company_name"]
     greeting = persona["greeting"].replace("{company}", company)
-    unavailable = persona["unavailable_message"]
+    unavailable = persona["unavailable_message"].replace("{company}", company)
     code_word = get_config("security.code_word", "", db_path)
 
     prompt_parts = [
