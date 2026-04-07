@@ -46,13 +46,8 @@ def save():
     for key in SIP_FIELDS:
         value = request.form.get(key, "")
         set_config(key, value, "sip", db_path=db)
-    flash("SIP settings saved.", "success")
-    return redirect(url_for("sip.index"))
 
-
-@bp.route("/sip/apply", methods=["POST"])
-def apply_config():
-    db = _db_path()
+    # Auto-apply: regenerate Asterisk config and reload
     config_dir = current_app.config.get("ASTERISK_CONFIG_DIR", "/etc/asterisk")
     config = {}
     for key in SIP_FIELDS:
@@ -74,12 +69,16 @@ def apply_config():
                 capture_output=True,
                 timeout=5,
             )
-            flash("Config applied and Asterisk reloaded.", "success")
+            flash("Settings saved and applied to Asterisk.", "success")
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            flash(
-                "Config files written. Asterisk reload will happen on Pi.",
-                "success",
-            )
+            flash("Settings saved. Asterisk will reload on the Pi.", "success")
     except Exception as e:
-        flash(f"Error applying config: {e}", "error")
+        flash(f"Settings saved but failed to apply: {e}", "error")
+
     return redirect(url_for("sip.index"))
+
+
+@bp.route("/sip/apply", methods=["POST"])
+def apply_config():
+    """Legacy route — redirects to save which now auto-applies."""
+    return redirect(url_for("sip.save"), code=307)
