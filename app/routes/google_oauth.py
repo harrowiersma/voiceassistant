@@ -35,7 +35,9 @@ def authorize():
         flash("Google Client ID not configured. Set it on the Availability page first.", "error")
         return redirect(url_for("availability.index"))
 
-    callback_url = url_for("google_oauth.callback", _external=True)
+    # Google OAuth requires localhost for non-HTTPS redirect URIs.
+    # Use explicit localhost URL since the Pi is accessed via local network.
+    callback_url = "http://localhost:8080/google/callback"
 
     params = {
         "client_id": client_id,
@@ -66,7 +68,7 @@ def callback():
     db = _db_path()
     client_id = get_config("google.client_id", "", db)
     client_secret = get_config("google.client_secret", "", db)
-    callback_url = url_for("google_oauth.callback", _external=True)
+    callback_url = "http://localhost:8080/google/callback"
 
     # Exchange authorization code for tokens
     token_data = urllib.parse.urlencode({
