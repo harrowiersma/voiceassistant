@@ -91,6 +91,29 @@ def edit(persona_id):
     return render_template("persona_edit.html", persona=dict(persona))
 
 
+@bp.route("/personas/<int:persona_id>/duplicate", methods=["POST"])
+def duplicate(persona_id):
+    conn = get_db_connection(_db_path())
+    original = conn.execute("SELECT * FROM personas WHERE id = ?", (persona_id,)).fetchone()
+    if not original:
+        flash("Persona not found.", "error")
+        conn.close()
+        return redirect(url_for("personas.index"))
+    conn.execute(
+        "INSERT INTO personas (name, company_name, greeting, personality, unavailable_message, "
+        "calendar_type, inbound_number, timezone, is_default, enabled) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1)",
+        (f"{original['name']} (copy)", original["company_name"], original["greeting"],
+         original["personality"], original["unavailable_message"], original["calendar_type"],
+         "", original["timezone"]),
+    )
+    new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.commit()
+    conn.close()
+    flash(f"Persona duplicated. Edit the copy to customize it.", "success")
+    return redirect(url_for("personas.edit", persona_id=new_id))
+
+
 @bp.route("/personas/<int:persona_id>/delete", methods=["POST"])
 def delete(persona_id):
     conn = get_db_connection(_db_path())

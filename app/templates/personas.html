@@ -83,6 +83,9 @@
             <td>
                 <div class="action-btns">
                     <a href="{{ url_for('personas.edit', persona_id=p.id) }}" role="button" class="outline secondary">Edit</a>
+                    <form method="post" action="{{ url_for('personas.duplicate', persona_id=p.id) }}" class="inline-form">
+                        <button type="submit" class="outline secondary">Duplicate</button>
+                    </form>
                     {% if not p.is_default %}
                     <form method="post" action="{{ url_for('personas.delete', persona_id=p.id) }}" class="inline-form">
                         <button type="submit" class="outline secondary" onclick="return confirm('Delete persona {{ p.name }}?')">Delete</button>
