@@ -101,16 +101,55 @@ def init_audio_cache(db_path=None):
 
 
 def _match_person_in_transcript(transcript, persona_id):
-    """Check if transcript mentions a team member by name. Returns (name, forward_number, person_id) or None."""
+    """Check if transcript mentions a team member by name using fuzzy matching.
+
+    Vosk consistently mangles unusual names — "Harro" becomes "her", "hero",
+    "horror", "iraq", "horrible". We use character overlap + phonetic proximity
+    to catch these misrecognitions.
+    Returns (name, forward_number, person_id) or None.
+    """
     if persona_id not in _person_names:
         return None
     spoken = transcript.lower()
+    spoken_words = spoken.split()
+
     for display_name, name_variants, fwd_number, person_id in _person_names[persona_id]:
         if not fwd_number:
             continue
         for name in name_variants:
+            # 1. Exact substring match
             if name in spoken:
+                logger.info(f"Name exact match: '{name}' in '{spoken}'")
                 return (display_name, fwd_number, person_id)
+
+            # 2. Fuzzy word match — check each spoken word against each name
+            name_nospace = name.replace(" ", "")
+            for word in spoken_words:
+                if len(word) < 2:
+                    continue
+                # Character overlap ratio
+                matches = 0
+                j = 0
+                for c in name_nospace:
+                    while j < len(word):
+                        if word[j] == c:
+                            matches += 1
+                            j += 1
+                            break
+                        j += 1
+                if len(name_nospace) > 0:
+                    ratio = matches / len(name_nospace)
+                    # Match if 50%+ chars overlap AND word length is close
+                    if ratio >= 0.5 and abs(len(word) - len(name_nospace)) <= 3:
+                        logger.info(f"Name fuzzy match: '{word}' ≈ '{name}' (ratio={ratio:.2f})")
+                        return (display_name, fwd_number, person_id)
+
+                # 3. Starting chars match (Vosk often gets the beginning right)
+                if len(name_nospace) >= 3 and len(word) >= 3:
+                    if word[:2] == name_nospace[:2] and len(word) <= len(name_nospace) + 3:
+                        logger.info(f"Name prefix match: '{word}' starts like '{name}'")
+                        return (display_name, fwd_number, person_id)
+
     return None
 
 # Pre-built silence frame (20ms at 8kHz 16-bit mono = 320 bytes)
