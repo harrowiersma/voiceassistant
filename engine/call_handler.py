@@ -122,33 +122,32 @@ def _match_person_in_transcript(transcript, persona_id):
                 logger.info(f"Name exact match: '{name}' in '{spoken}'")
                 return (display_name, fwd_number, person_id)
 
-            # 2. Fuzzy word match — check each spoken word against each name
+            # 2. Fuzzy word match — only for names 4+ chars (short names use exact only)
             name_nospace = name.replace(" ", "")
-            for word in spoken_words:
-                if len(word) < 2:
-                    continue
-                # Character overlap ratio
-                matches = 0
-                j = 0
-                for c in name_nospace:
-                    while j < len(word):
-                        if word[j] == c:
-                            matches += 1
+            if len(name_nospace) >= 4:
+                for word in spoken_words:
+                    if len(word) < 3:
+                        continue
+                    # Skip common words that cause false positives
+                    if word in ("hello", "help", "here", "hear", "her", "him", "his",
+                                "have", "how", "who", "hey", "the", "that", "this",
+                                "they", "them", "there", "will", "with", "would"):
+                        continue
+                    # Character overlap ratio
+                    matches = 0
+                    j = 0
+                    for c in name_nospace:
+                        while j < len(word):
+                            if word[j] == c:
+                                matches += 1
+                                j += 1
+                                break
                             j += 1
-                            break
-                        j += 1
-                if len(name_nospace) > 0:
-                    ratio = matches / len(name_nospace)
-                    # Match if 50%+ chars overlap AND word length is close
-                    if ratio >= 0.5 and abs(len(word) - len(name_nospace)) <= 3:
-                        logger.info(f"Name fuzzy match: '{word}' ≈ '{name}' (ratio={ratio:.2f})")
-                        return (display_name, fwd_number, person_id)
-
-                # 3. Starting chars match (Vosk often gets the beginning right)
-                if len(name_nospace) >= 3 and len(word) >= 3:
-                    if word[:2] == name_nospace[:2] and len(word) <= len(name_nospace) + 3:
-                        logger.info(f"Name prefix match: '{word}' starts like '{name}'")
-                        return (display_name, fwd_number, person_id)
+                    if len(name_nospace) > 0:
+                        ratio = matches / len(name_nospace)
+                        if ratio >= 0.6 and abs(len(word) - len(name_nospace)) <= 2:
+                            logger.info(f"Name fuzzy match: '{word}' ≈ '{name}' (ratio={ratio:.2f})")
+                            return (display_name, fwd_number, person_id)
 
     return None
 
@@ -678,19 +677,42 @@ async def handle_call(call_uuid, reader: asyncio.StreamReader, writer: asyncio.S
                     await _redirect_to_forward(db_path)
                     break
 
-                # --- PERSON NAME DETECTION: skip LLM for instant forwarding ---
+                # --- PERSON NAME DETECTION: skip LLM, check availability, forward ---
                 person_match = _match_person_in_transcript(transcript, persona_id)
                 if person_match:
                     display_name, fwd_number, matched_person_id = person_match
-                    logger.info(f"Person name detected in STT: '{display_name}' → {fwd_number} (skipping LLM)")
+                    logger.info(f"Person name detected in STT: '{display_name}' → {fwd_number}")
                     session.transcript.append({"role": "user", "text": transcript})
-                    phrase = f"Connecting you to {display_name} now."
-                    await _play_cached_or_synth(bridge, phrase, db_path)
-                    session.action_taken = "forwarded"
-                    session.caller_name = transcript  # preserve what they said
-                    session.transcript.append({"role": "assistant", "text": phrase})
-                    await _redirect_to_forward(db_path, forward_number=fwd_number)
-                    break
+
+                    # Check availability before forwarding
+                    from engine.tools import _handle_check_availability
+                    from db.connection import get_db_connection
+                    conn = get_db_connection(db_path)
+                    person_row = conn.execute("SELECT * FROM persons WHERE id = ?", (matched_person_id,)).fetchone()
+                    conn.close()
+                    person_dict = dict(person_row) if person_row else None
+
+                    avail = _handle_check_availability({}, db_path=db_path, person=person_dict)
+                    logger.info(f"Availability for {display_name}: {avail}")
+
+                    if avail.get("action") == "forward":
+                        phrase = f"Connecting you to {display_name} now."
+                        await _play_cached_or_synth(bridge, phrase, db_path)
+                        session.action_taken = "forwarded"
+                        session.transcript.append({"role": "assistant", "text": phrase})
+                        await _redirect_to_forward(db_path, forward_number=fwd_number)
+                        break
+                    else:
+                        # Person is unavailable — take a message
+                        status = avail.get("status", "unavailable")
+                        logger.info(f"{display_name} is {status} — taking message")
+                        unavail_msg = session.persona.get("unavailable_message", "They are not available right now.").replace("{company}", session.persona.get("company_name", "")) if session.persona else "They are not available right now."
+                        phrase = f"I'm sorry, {display_name} is not available right now. {unavail_msg}"
+                        await bridge.synthesize_and_play(phrase, db_path)
+                        session.transcript.append({"role": "assistant", "text": phrase})
+                        await _play_cached_or_synth(bridge, "Would you like to leave a message?", db_path)
+                        session.transcript.append({"role": "assistant", "text": "Would you like to leave a message?"})
+                        # Continue the loop — LLM handles the message-taking conversation
 
                 session.transcript.append({"role": "user", "text": transcript})
 
