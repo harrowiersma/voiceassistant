@@ -5,7 +5,7 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
@@ -68,21 +68,21 @@
 <table role="grid">
     <thead>
         <tr>
-            <th>Enabled</th>
-            <th>Type</th>
-            <th>Keywords</th>
-            <th>Response</th>
-            <th>Date Range</th>
-            <th>Priority</th>
-            <th>Actions</th>
+            <th scope="col">Enabled</th>
+            <th scope="col">Type</th>
+            <th scope="col">Keywords</th>
+            <th scope="col">Response</th>
+            <th scope="col">Date Range</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
     <tbody>
         {% for rule in rules %}
         <tr>
             <td>
-                <form method="post" action="{{ url_for('knowledge.toggle', rule_id=rule['id']) }}" style="display:inline">
-                    <button type="submit" class="outline {% if rule['enabled'] %}contrast{% else %}secondary{% endif %}" style="padding:0.25rem 0.5rem;margin:0">
+                <form method="post" action="{{ url_for('knowledge.toggle', rule_id=rule['id']) }}" class="inline-form">
+                    <button type="submit" class="outline btn-sm {% if rule['enabled'] %}contrast{% else %}secondary{% endif %}">
                         {{ "On" if rule['enabled'] else "Off" }}
                     </button>
                 </form>
@@ -99,8 +99,8 @@
             </td>
             <td>{{ rule['priority'] }}</td>
             <td>
-                <form method="post" action="{{ url_for('knowledge.delete', rule_id=rule['id']) }}" style="display:inline">
-                    <button type="submit" class="outline secondary" style="padding:0.25rem 0.5rem;margin:0">Delete</button>
+                <form method="post" action="{{ url_for('knowledge.delete', rule_id=rule['id']) }}" class="inline-form">
+                    <button type="submit" class="outline secondary btn-sm">Delete</button>
                 </form>
             </td>
         </tr>

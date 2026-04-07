@@ -5,7 +5,7 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
@@ -68,12 +68,12 @@
 <table>
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Aliases</th>
-            <th>Company</th>
-            <th>Forward Number</th>
-            <th>Calendar</th>
-            <th>Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Aliases</th>
+            <th scope="col">Company</th>
+            <th scope="col">Forward Number</th>
+            <th scope="col">Calendar</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -88,9 +88,9 @@
             <td>{{ p.forward_number or '-' }}</td>
             <td>{{ p.calendar_type or 'none' }}</td>
             <td>
-                <a href="{{ url_for('persons.edit', person_id=p.id) }}" role="button" class="outline secondary" style="padding:0.25rem 0.5rem">Edit</a>
-                <form method="post" action="{{ url_for('persons.delete', person_id=p.id) }}" style="display:inline">
-                    <button type="submit" class="outline secondary" style="padding:0.25rem 0.5rem" onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
+                <a href="{{ url_for('persons.edit', person_id=p.id) }}" role="button" class="outline secondary btn-sm">Edit</a>
+                <form method="post" action="{{ url_for('persons.delete', person_id=p.id) }}" class="inline-form">
+                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
                 </form>
             </td>
         </tr>

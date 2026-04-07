@@ -8,10 +8,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     <script src="{{ url_for('static', filename='js/htmx.min.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/socket.io.min.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/status-helpers.js') }}"></script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
+    <button class="hamburger" id="hamburger-btn" aria-label="Open navigation menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
     <div class="layout">
-        <nav class="sidebar" aria-label="Main navigation">
+        <nav class="sidebar" id="sidebar" aria-label="Main navigation">
             <header class="sidebar-header">
                 <strong>Voice Secretary</strong>
             </header>
@@ -19,60 +26,126 @@
             <div class="nav-group">
                 <small class="nav-group-label">Monitor</small>
                 <ul>
-                    <li><a href="/" class="{% if request.endpoint == 'dashboard.home' %}active{% endif %}">Home</a></li>
-                    <li><a href="/calls" class="{% if request.endpoint == 'calls.index' %}active{% endif %}">Call Log</a></li>
+                    <li><a href="/" class="{% if request.endpoint == 'dashboard.home' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        Home
+                    </a></li>
+                    <li><a href="/calls" class="{% if request.endpoint == 'calls.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        Call Log
+                    </a></li>
                 </ul>
             </div>
 
             <div class="nav-group">
                 <small class="nav-group-label">Configure</small>
                 <ul>
-                    <li><a href="/personas" class="{% if request.endpoint and (request.endpoint.startswith('personas') or request.endpoint == 'persona.index') %}active{% endif %}">Personas</a></li>
-                    <li><a href="/persons" class="{% if request.endpoint and request.endpoint.startswith('persons') %}active{% endif %}">People</a></li>
-                    <li><a href="/knowledge" class="{% if request.endpoint == 'knowledge.index' %}active{% endif %}">Knowledge Base</a></li>
-                    <li><a href="/availability" class="{% if request.endpoint == 'availability.index' %}active{% endif %}">Availability</a></li>
-                    <li><a href="/sip" class="{% if request.endpoint == 'sip.index' %}active{% endif %}">SIP Settings</a></li>
-                    <li><a href="/ai" class="{% if request.endpoint == 'ai.index' %}active{% endif %}">AI Settings</a></li>
-                    <li><a href="/actions" class="{% if request.endpoint == 'actions.index' %}active{% endif %}">Actions</a></li>
-                    <li><a href="/blocking" class="{% if request.endpoint == 'blocking.index' %}active{% endif %}">Call Blocking</a></li>
+                    <li><a href="/personas" class="{% if request.endpoint and (request.endpoint.startswith('personas') or request.endpoint == 'persona.index') %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Personas
+                    </a></li>
+                    <li><a href="/persons" class="{% if request.endpoint and request.endpoint.startswith('persons') %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        People
+                    </a></li>
+                    <li><a href="/knowledge" class="{% if request.endpoint == 'knowledge.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        Knowledge Base
+                    </a></li>
+                    <li><a href="/availability" class="{% if request.endpoint == 'availability.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Availability
+                    </a></li>
+                    <li><a href="/sip" class="{% if request.endpoint == 'sip.index' or request.endpoint == 'blocking.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        Telephony
+                    </a></li>
+                    <li><a href="/ai" class="{% if request.endpoint == 'ai.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                        AI Settings
+                    </a></li>
+                    <li><a href="/actions" class="{% if request.endpoint == 'actions.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Actions
+                    </a></li>
                 </ul>
             </div>
 
             <div class="nav-group">
                 <small class="nav-group-label">System</small>
                 <ul>
-                    <li><a href="/system" class="{% if request.endpoint == 'system_mgmt.index' %}active{% endif %}">System</a></li>
+                    <li><a href="/system" class="{% if request.endpoint == 'system_mgmt.index' %}active{% endif %}">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        System
+                    </a></li>
                 </ul>
             </div>
 
             <footer class="sidebar-footer">
                 <button id="theme-toggle" class="outline secondary" onclick="toggleTheme()">
-                    Toggle Theme
+                    <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <span id="theme-label">Dark</span>
                 </button>
             </footer>
         </nav>
 
-        <main class="content">
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+        <main class="content" id="main-content">
             <header class="content-header">
                 <h1>{% block page_title %}Dashboard{% endblock %}</h1>
             </header>
             <section class="content-body">
+                <div class="toast-container" id="toast-container"></div>
                 {% block content %}{% endblock %}
             </section>
         </main>
     </div>
 
     <script>
+    // Theme toggle
     function toggleTheme() {
         const html = document.documentElement;
         const current = html.getAttribute("data-theme");
         const next = current === "dark" ? "light" : "dark";
         html.setAttribute("data-theme", next);
         localStorage.setItem("theme", next);
+        updateThemeUI(next);
     }
+
+    function updateThemeUI(theme) {
+        document.getElementById("theme-icon-sun").style.display = theme === "dark" ? "none" : "block";
+        document.getElementById("theme-icon-moon").style.display = theme === "dark" ? "block" : "none";
+        document.getElementById("theme-label").textContent = theme === "dark" ? "Dark" : "Light";
+    }
+
     // Restore saved theme
     const saved = localStorage.getItem("theme");
     if (saved) document.documentElement.setAttribute("data-theme", saved);
+    updateThemeUI(document.documentElement.getAttribute("data-theme") || "dark");
+
+    // Hamburger menu
+    document.getElementById("hamburger-btn").addEventListener("click", function() {
+        document.getElementById("sidebar").classList.toggle("open");
+    });
+    document.getElementById("sidebar-backdrop").addEventListener("click", function() {
+        document.getElementById("sidebar").classList.remove("open");
+    });
+
+    // Toast notification system
+    function showToast(message, type) {
+        type = type || "success";
+        var container = document.getElementById("toast-container");
+        var toast = document.createElement("div");
+        toast.className = "toast " + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(function() {
+            toast.classList.add("fade-out");
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 4000);
+    }
     </script>
 </body>
 </html>

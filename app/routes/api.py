@@ -139,6 +139,27 @@ def status():
         if "outbound" in reg["name"]:
             outbound_status = reg["status"].lower()
 
+    # Check MS Graph configuration status
+    db_path = current_app.config.get("_DB_PATH") or current_app.config.get("DATABASE")
+    graph_status = "not_configured"
+    has_personas = False
+    has_calls = False
+    try:
+        conn = get_db_connection(db_path)
+        client_id = conn.execute(
+            "SELECT value FROM config WHERE key = 'graph.client_id'"
+        ).fetchone()
+        if client_id and client_id["value"]:
+            token = conn.execute(
+                "SELECT * FROM oauth_tokens WHERE provider = 'msgraph' AND expires_at > datetime('now')"
+            ).fetchone()
+            graph_status = "connected" if token else "configured"
+        has_personas = conn.execute("SELECT 1 FROM personas LIMIT 1").fetchone() is not None
+        has_calls = conn.execute("SELECT 1 FROM calls LIMIT 1").fetchone() is not None
+        conn.close()
+    except Exception:
+        pass
+
     return jsonify({
         "system": {
             "cpu_temp": cpu_temp,
@@ -159,6 +180,11 @@ def status():
             "ollama": _check_ollama(),
             "piper": _check_piper(),
         },
+        "graph": {
+            "status": graph_status,
+        },
+        "has_personas": has_personas,
+        "has_calls": has_calls,
     })
 
 

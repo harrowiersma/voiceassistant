@@ -5,7 +5,7 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
@@ -56,15 +56,16 @@
     </form>
 </details>
 
+{% if personas %}
 <figure>
 <table>
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Company</th>
-            <th>Calendar</th>
-            <th>Inbound Number</th>
-            <th>Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Company</th>
+            <th scope="col">Calendar</th>
+            <th scope="col">Inbound Number</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -80,10 +81,10 @@
             <td>{{ p.calendar_type or 'none' }}</td>
             <td>{{ p.inbound_number or '-' }}</td>
             <td>
-                <a href="{{ url_for('personas.edit', persona_id=p.id) }}" role="button" class="outline secondary">Edit</a>
+                <a href="{{ url_for('personas.edit', persona_id=p.id) }}" role="button" class="outline secondary btn-sm">Edit</a>
                 {% if not p.is_default %}
-                <form method="post" action="{{ url_for('personas.delete', persona_id=p.id) }}" style="display:inline">
-                    <button type="submit" class="outline secondary" onclick="return confirm('Delete persona {{ p.name }}?')">Delete</button>
+                <form method="post" action="{{ url_for('personas.delete', persona_id=p.id) }}" class="inline-form">
+                    <button type="submit" class="outline secondary btn-sm" onclick="return confirm('Delete persona {{ p.name }}?')">Delete</button>
                 </form>
                 {% endif %}
             </td>
@@ -92,4 +93,11 @@
     </tbody>
 </table>
 </figure>
+{% else %}
+<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <p>No personas created yet.</p>
+    <p>Create your first persona to define how your secretary answers calls.</p>
+</div>
+{% endif %}
 {% endblock %}

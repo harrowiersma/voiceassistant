@@ -5,7 +5,7 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
@@ -40,8 +40,8 @@
     <table>
         <thead>
             <tr>
-                <th>Teams Status</th>
-                <th>Action</th>
+                <th scope="col">Teams Status</th>
+                <th scope="col">Action</th>
             </tr>
         </thead>
         <tbody>

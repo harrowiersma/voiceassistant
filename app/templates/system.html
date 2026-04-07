@@ -6,8 +6,8 @@
 <table role="grid">
     <thead>
         <tr>
-            <th>Service</th>
-            <th>Status</th>
+            <th scope="col">Service</th>
+            <th scope="col">Status</th>
         </tr>
     </thead>
     <tbody>
@@ -27,17 +27,27 @@
 
 <h3>System Health</h3>
 <div id="health-cards" class="card-grid">
-    <article class="data-card"><h3>Loading...</h3><div class="value">...</div></article>
+    <article class="data-card">
+        <h3>Loading</h3>
+        <div class="skeleton skeleton-line medium"></div>
+        <div class="skeleton skeleton-line short"></div>
+    </article>
 </div>
 
 <h3>SIP Trunks</h3>
 <div id="sip-cards" class="card-grid">
-    <article class="data-card"><h3>Loading...</h3><div class="value">...</div></article>
+    <article class="data-card">
+        <h3>Loading</h3>
+        <div class="skeleton skeleton-line short"></div>
+    </article>
 </div>
 
 <h3>AI Components</h3>
 <div id="ai-cards" class="card-grid">
-    <article class="data-card"><h3>Loading...</h3><div class="value">...</div></article>
+    <article class="data-card">
+        <h3>Loading</h3>
+        <div class="skeleton skeleton-line short"></div>
+    </article>
 </div>
 
 <script>
@@ -45,36 +55,40 @@ function renderStatus() {
     fetch('/api/status')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        // System health
+        // System health with progress bars
         var html = '';
         if (data.system.cpu_temp !== null) {
-            var tempClass = data.system.cpu_temp > 70 ? 'error' : data.system.cpu_temp > 60 ? 'warn' : 'ok';
+            var cpuPct = Math.min(Math.round((data.system.cpu_temp / 85) * 100), 100);
             html += '<article class="data-card"><h3>CPU Temp</h3>';
-            html += '<div class="value"><span class="status-badge"><span class="status-dot ' + tempClass + '"></span>' + data.system.cpu_temp + '&deg;C</span></div></article>';
+            html += '<div class="metric-row"><span class="metric-label">Temperature</span><span class="metric-value">' + data.system.cpu_temp + '&deg;C</span></div>';
+            html += '<div class="progress-bar"><div class="progress-fill ' + progressClass(cpuPct) + '" style="width:' + cpuPct + '%"></div></div>';
+            html += '</article>';
         }
         if (data.system.ram !== undefined) {
-            var ramClass = data.system.ram > 85 ? 'error' : data.system.ram > 70 ? 'warn' : 'ok';
             html += '<article class="data-card"><h3>RAM</h3>';
-            html += '<div class="value"><span class="status-badge"><span class="status-dot ' + ramClass + '"></span>' + data.system.ram + '% (' + data.system.ram_used_mb + '/' + data.system.ram_total_mb + ' MB)</span></div></article>';
+            html += '<div class="metric-row"><span class="metric-label">Usage</span><span class="metric-value">' + data.system.ram + '% (' + data.system.ram_used_mb + '/' + data.system.ram_total_mb + ' MB)</span></div>';
+            html += '<div class="progress-bar"><div class="progress-fill ' + progressClass(data.system.ram) + '" style="width:' + data.system.ram + '%"></div></div>';
+            html += '</article>';
         }
         if (data.system.disk !== undefined) {
-            var diskClass = data.system.disk > 90 ? 'error' : data.system.disk > 75 ? 'warn' : 'ok';
             html += '<article class="data-card"><h3>Disk</h3>';
-            html += '<div class="value"><span class="status-badge"><span class="status-dot ' + diskClass + '"></span>' + data.system.disk + '%</span></div></article>';
+            html += '<div class="metric-row"><span class="metric-label">Usage</span><span class="metric-value">' + data.system.disk + '%</span></div>';
+            html += '<div class="progress-bar"><div class="progress-fill ' + progressClass(data.system.disk) + '" style="width:' + data.system.disk + '%"></div></div>';
+            html += '</article>';
         }
-        document.getElementById('health-cards').innerHTML = html || '<p>No data</p>';
+        document.getElementById('health-cards').innerHTML = html || '<div class="empty-state"><p>No health data available.</p></div>';
 
         // SIP trunks
         var sipHtml = '';
         var inStatus = data.asterisk.inbound_trunk || 'unknown';
         var inClass = inStatus === 'registered' ? 'ok' : 'error';
-        sipHtml += '<article class="data-card"><h3>Inbound (DIDWW)</h3>';
-        sipHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + inClass + '"></span>' + inStatus + '</span></div></article>';
+        sipHtml += '<article class="data-card"><h3>Inbound</h3>';
+        sipHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + inClass + '"></span> ' + inStatus + '</span></div></article>';
 
         var outStatus = data.asterisk.outbound_trunk || 'unknown';
         var outClass = outStatus === 'registered' ? 'ok' : 'error';
-        sipHtml += '<article class="data-card"><h3>Outbound (VoIPBuster)</h3>';
-        sipHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + outClass + '"></span>' + outStatus + '</span></div></article>';
+        sipHtml += '<article class="data-card"><h3>Outbound</h3>';
+        sipHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + outClass + '"></span> ' + outStatus + '</span></div></article>';
 
         sipHtml += '<article class="data-card"><h3>Active Calls</h3>';
         sipHtml += '<div class="value">' + data.asterisk.active_calls + '</div></article>';
@@ -90,12 +104,12 @@ function renderStatus() {
         components.forEach(function(c) {
             var cls = c.status === c.okVal ? 'ok' : 'error';
             aiHtml += '<article class="data-card"><h3>' + c.name + '</h3>';
-            aiHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + cls + '"></span>' + c.status + '</span></div></article>';
+            aiHtml += '<div class="value"><span class="status-badge"><span class="status-dot ' + cls + '"></span> ' + c.status + '</span></div></article>';
         });
         document.getElementById('ai-cards').innerHTML = aiHtml;
     })
     .catch(function() {
-        document.getElementById('health-cards').innerHTML = '<p>Failed to load status</p>';
+        document.getElementById('health-cards').innerHTML = '<div class="connection-error"><span>Failed to load system status. Retrying...</span></div>';
     });
 }
 renderStatus();
@@ -103,11 +117,11 @@ setInterval(renderStatus, 10000);
 </script>
 
 <h3>Config Backup &amp; Restore</h3>
-<div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+<div class="filter-bar">
     <a href="/api/backup" download="voice-secretary-backup.json" role="button" class="outline">Download Backup</a>
-    <label role="button" class="outline" style="cursor: pointer;">
+    <label role="button" class="outline">
         Upload Restore
-        <input type="file" id="restore-file" accept=".json" style="display: none;" onchange="restoreConfig(this)">
+        <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreConfig(this)">
     </label>
 </div>
 <script>
@@ -117,8 +131,15 @@ function restoreConfig(input) {
     reader.onload = function(e) {
         fetch('/api/restore', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: e.target.result})
         .then(function(r) { return r.json(); })
-        .then(function() { alert('Config restored successfully.'); location.reload(); })
-        .catch(function() { alert('Restore failed.'); });
+        .then(function() {
+            if (typeof showToast === 'function') showToast('Config restored successfully.');
+            else alert('Config restored successfully.');
+            location.reload();
+        })
+        .catch(function() {
+            if (typeof showToast === 'function') showToast('Restore failed.', 'error');
+            else alert('Restore failed.');
+        });
     };
     reader.readAsText(input.files[0]);
     input.value = '';

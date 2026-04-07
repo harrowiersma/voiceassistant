@@ -5,7 +5,7 @@
 {% if messages %}
 <div class="flash-messages">
     {% for category, message in messages %}
-    <p class="flash {{ category }}">{{ message }}</p>
+    <p class="flash-{{ category }}">{{ message }}</p>
     {% endfor %}
 </div>
 {% endif %}
@@ -38,11 +38,11 @@
 <table>
     <thead>
         <tr>
-            <th>Pattern</th>
-            <th>Type</th>
-            <th>Reason</th>
-            <th>Added</th>
-            <th></th>
+            <th scope="col">Pattern</th>
+            <th scope="col">Type</th>
+            <th scope="col">Reason</th>
+            <th scope="col">Added</th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
@@ -53,8 +53,8 @@
             <td>{{ rule.reason or '-' }}</td>
             <td>{{ rule.created_at }}</td>
             <td>
-                <form method="post" action="{{ url_for('blocking.delete', rule_id=rule.id) }}" style="margin:0">
-                    <button type="submit" class="outline secondary" style="padding:0.25rem 0.5rem">Delete</button>
+                <form method="post" action="{{ url_for('blocking.delete', rule_id=rule.id) }}" class="inline-form">
+                    <button type="submit" class="outline secondary btn-sm">Delete</button>
                 </form>
             </td>
         </tr>

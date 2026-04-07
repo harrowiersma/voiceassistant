@@ -3,100 +3,317 @@
 {% block page_title %}Home{% endblock %}
 
 {% block content %}
-<div id="live-call-indicator" style="display:none; padding: 1rem; background: var(--accent); border-radius: 8px; color: #fff; margin-bottom: 1rem;">
-    <strong>LIVE:</strong> <span id="live-call-info">No active calls</span>
+<!-- Live Call Card (hidden by default, shown via Socket.IO) -->
+<div id="live-call-card" class="live-call-card" style="display:none;">
+    <div class="live-header">
+        <span class="live-badge">
+            <span class="pulse-dot"></span>
+            Live Call
+        </span>
+        <span class="live-timer" id="live-timer">0:00</span>
+    </div>
+    <div class="live-caller" id="live-caller">Unknown caller</div>
+    <div class="live-status" id="live-status">Connecting...</div>
 </div>
 
+<!-- Health Banner -->
+<div id="health-banner"></div>
+
+<!-- Status Cards -->
 <div class="card-grid"
      hx-get="/api/status"
      hx-trigger="load, every 10s"
      hx-swap="innerHTML"
      hx-target="#status-cards">
     <div id="status-cards">
+        <!-- Skeleton loading state -->
         <article class="data-card">
-            <h3>Loading...</h3>
-            <div class="value">
-                <span class="status-badge">
-                    <span class="status-dot idle"></span>
-                    Connecting...
-                </span>
-            </div>
+            <h3>System Health</h3>
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line short"></div>
+            <div class="skeleton skeleton-line medium"></div>
+        </article>
+        <article class="data-card">
+            <h3>Phone System</h3>
+            <div class="skeleton skeleton-line short"></div>
+        </article>
+        <article class="data-card">
+            <h3>AI Engine</h3>
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line medium"></div>
+        </article>
+        <article class="data-card">
+            <h3>Calendar</h3>
+            <div class="skeleton skeleton-line short"></div>
         </article>
     </div>
 </div>
 
+<!-- Setup Checklist (shown when system not fully configured) -->
+<div id="setup-checklist" style="display:none;">
+    <div class="setup-checklist">
+        <h2>Get Your Voice Secretary Running</h2>
+        <p class="setup-subtitle">Complete these steps to start answering calls automatically.</p>
+        <ul class="setup-steps" id="setup-steps">
+            <li>
+                <a href="/sip" class="setup-step" id="step-sip">
+                    <span class="step-icon pending">1</span>
+                    <span class="step-text">
+                        <strong>Configure SIP trunk</strong>
+                        <small>Connect your phone number</small>
+                    </span>
+                </a>
+            </li>
+            <li>
+                <a href="/ai" class="setup-step" id="step-ai">
+                    <span class="step-icon pending">2</span>
+                    <span class="step-text">
+                        <strong>Set up AI models</strong>
+                        <small>Speech recognition, language model, voice</small>
+                    </span>
+                </a>
+            </li>
+            <li>
+                <a href="/personas" class="setup-step" id="step-persona">
+                    <span class="step-icon pending">3</span>
+                    <span class="step-text">
+                        <strong>Create a persona</strong>
+                        <small>Define how your secretary answers</small>
+                    </span>
+                </a>
+            </li>
+            <li>
+                <a href="/calls" class="setup-step" id="step-test">
+                    <span class="step-icon pending">4</span>
+                    <span class="step-text">
+                        <strong>Make a test call</strong>
+                        <small>Call your number to verify everything works</small>
+                    </span>
+                </a>
+            </li>
+        </ul>
+        <div class="setup-progress">
+            <div class="progress-label">
+                <span id="setup-progress-text">0 of 4 steps complete</span>
+                <span id="setup-progress-pct">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill ok" id="setup-progress-bar" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Calls (shown when system is configured) -->
+<div id="recent-calls-section">
+    <h2>Recent Calls</h2>
+    <div class="empty-state" id="recent-calls-empty">
+        <p>No calls yet.</p>
+        <p>Your first call will appear here once everything is set up.</p>
+    </div>
+    <div id="recent-calls-list" style="display:none;"></div>
+</div>
+
 <script>
+// Health banner
+var lastHealthCheck = null;
+function updateHealthBanner(data) {
+    var issues = [];
+    if (data.asterisk.status !== "running" && data.asterisk.status !== "ok") {
+        issues.push("Asterisk PBX: " + statusLabel(data.asterisk.status));
+    }
+    if (data.ai.vosk !== "installed" && data.ai.vosk !== "loaded") {
+        issues.push("Vosk STT: " + statusLabel(data.ai.vosk));
+    }
+    if (data.ai.ollama !== "running" && data.ai.ollama !== "ok") {
+        issues.push("Ollama LLM: " + statusLabel(data.ai.ollama));
+    }
+    if (data.ai.piper !== "installed" && data.ai.piper !== "loaded") {
+        issues.push("Piper TTS: " + statusLabel(data.ai.piper));
+    }
+    if (data.graph && data.graph.status === "error") {
+        issues.push("MS Graph: " + statusLabel(data.graph.status));
+    }
+
+    lastHealthCheck = new Date();
+    var timeText = "Just now";
+    var banner = document.getElementById("health-banner");
+
+    if (issues.length === 0) {
+        banner.innerHTML = '<a href="/system" class="health-banner ok"><span class="health-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> All systems operational</span><span class="health-time">' + timeText + '</span></a>';
+    } else if (issues.length <= 2) {
+        banner.innerHTML = '<a href="/system" class="health-banner warn"><span class="health-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ' + issues.length + ' issue' + (issues.length > 1 ? 's' : '') + ': ' + issues.join(', ') + '</span><span class="health-time">' + timeText + '</span></a>';
+    } else {
+        banner.innerHTML = '<a href="/system" class="health-banner error"><span class="health-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> ' + issues.length + ' services need attention</span><span class="health-time">' + timeText + '</span></a>';
+    }
+}
+
+// Setup checklist
+function updateSetupChecklist(data) {
+    var sipOk = data.asterisk && (data.asterisk.status === "running" || data.asterisk.status === "ok" ||
+                data.asterisk.inbound_trunk === "registered");
+    var aiOk = data.ai && (data.ai.ollama === "running" || data.ai.ollama === "ok") &&
+               (data.ai.vosk === "installed" || data.ai.vosk === "loaded") &&
+               (data.ai.piper === "installed" || data.ai.piper === "loaded");
+    var personaOk = data.has_personas === true;
+    var callsOk = data.has_calls === true;
+
+    var steps = [sipOk, aiOk, personaOk, callsOk];
+    var doneCount = steps.filter(Boolean).length;
+    var allDone = doneCount === 4;
+
+    // Update step icons
+    var ids = ["step-sip", "step-ai", "step-persona", "step-test"];
+    for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) {
+            var icon = el.querySelector(".step-icon");
+            if (steps[i]) {
+                icon.className = "step-icon done";
+                icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+            } else {
+                icon.className = "step-icon pending";
+                icon.textContent = (i + 1).toString();
+            }
+        }
+    }
+
+    // Update progress
+    var pct = Math.round((doneCount / 4) * 100);
+    document.getElementById("setup-progress-text").textContent = doneCount + " of 4 steps complete";
+    document.getElementById("setup-progress-pct").textContent = pct + "%";
+    document.getElementById("setup-progress-bar").style.width = pct + "%";
+
+    // Show/hide checklist vs recent calls
+    if (allDone) {
+        document.getElementById("setup-checklist").style.display = "none";
+        document.getElementById("recent-calls-section").style.display = "block";
+    } else {
+        document.getElementById("setup-checklist").style.display = "block";
+        document.getElementById("recent-calls-section").style.display = "block";
+    }
+}
+
+// Render status cards with progress bars
+function renderStatusCards(data) {
+    var s = data.system;
+    var cpuText = s.cpu_temp !== null ? s.cpu_temp + "\u00b0C" : "N/A";
+    var ramPct = s.ram_total_mb > 0 ? Math.round((s.ram_used_mb / s.ram_total_mb) * 100) : 0;
+    var diskPct = s.disk_used_pct || s.disk || 0;
+    var cpuPct = s.cpu_temp !== null ? Math.min(Math.round((s.cpu_temp / 85) * 100), 100) : 0;
+
+    return '<article class="data-card">' +
+        '<h3>System Health</h3>' +
+        '<div class="metric-row"><span class="metric-label">CPU</span><span class="metric-value">' + cpuText + '</span></div>' +
+        '<div class="progress-bar"><div class="progress-fill ' + progressClass(cpuPct) + '" style="width:' + cpuPct + '%"></div></div>' +
+        '<div class="metric-row"><span class="metric-label">RAM</span><span class="metric-value">' + ramPct + '% (' + s.ram_used_mb + '/' + s.ram_total_mb + ' MB)</span></div>' +
+        '<div class="progress-bar"><div class="progress-fill ' + progressClass(ramPct) + '" style="width:' + ramPct + '%"></div></div>' +
+        '<div class="metric-row"><span class="metric-label">Disk</span><span class="metric-value">' + diskPct + '%</span></div>' +
+        '<div class="progress-bar"><div class="progress-fill ' + progressClass(diskPct) + '" style="width:' + diskPct + '%"></div></div>' +
+    '</article>' +
+    '<article class="data-card">' +
+        '<h3>Phone System</h3>' +
+        '<div class="value"><span class="status-badge"><span class="status-dot ' + statusDot(data.asterisk.status) + '"></span> ' + statusLabel(data.asterisk.status) + '</span></div>' +
+        (data.asterisk.active_calls > 0 ? '<div class="active-calls-count">' + data.asterisk.active_calls + ' <span class="active-label">active</span></div>' : '') +
+    '</article>' +
+    '<article class="data-card">' +
+        '<h3>AI Engine</h3>' +
+        '<div class="ai-component-list">' +
+            '<div class="status-badge"><span class="status-dot ' + statusDot(data.ai.vosk) + '"></span> Vosk STT: ' + statusLabel(data.ai.vosk) + '</div>' +
+            '<div class="status-badge"><span class="status-dot ' + statusDot(data.ai.ollama) + '"></span> Ollama LLM: ' + statusLabel(data.ai.ollama) + '</div>' +
+            '<div class="status-badge"><span class="status-dot ' + statusDot(data.ai.piper) + '"></span> Piper TTS: ' + statusLabel(data.ai.piper) + '</div>' +
+        '</div>' +
+    '</article>' +
+    '<article class="data-card">' +
+        '<h3>Calendar</h3>' +
+        '<div class="value"><span class="status-badge"><span class="status-dot ' + statusDot(data.graph.status) + '"></span> ' + statusLabel(data.graph.status) + '</span></div>' +
+    '</article>';
+}
+
+// Connection error handling
+var connectionFailCount = 0;
+var connectionErrorEl = null;
+
 // Override HTMX to handle JSON response for status cards
 document.addEventListener("htmx:beforeSwap", function(evt) {
     if (evt.detail.target.id === "status-cards") {
         try {
-            const data = JSON.parse(evt.detail.xhr.responseText);
+            var data = JSON.parse(evt.detail.xhr.responseText);
             evt.detail.serverResponse = renderStatusCards(data);
+            updateHealthBanner(data);
+            updateSetupChecklist(data);
+            connectionFailCount = 0;
+            if (connectionErrorEl) {
+                connectionErrorEl.remove();
+                connectionErrorEl = null;
+            }
         } catch(e) {
             // Not JSON, let HTMX handle normally
         }
     }
 });
 
-function statusDot(state) {
-    const map = {
-        "ok": "ok", "connected": "ok", "loaded": "ok", "running": "ok",
-        "warn": "warn", "expiring": "warn",
-        "error": "error", "failed": "error",
-    };
-    return map[state] || "idle";
+document.addEventListener("htmx:responseError", function(evt) {
+    if (evt.detail.target && evt.detail.target.id === "status-cards") {
+        connectionFailCount++;
+        if (!connectionErrorEl) {
+            connectionErrorEl = document.createElement("div");
+            connectionErrorEl.className = "connection-error";
+            connectionErrorEl.innerHTML = '<span>Connection lost \u2014 retrying...</span>';
+            var banner = document.getElementById("health-banner");
+            banner.parentNode.insertBefore(connectionErrorEl, banner.nextSibling);
+        }
+    }
+});
+
+// Live call timer
+var liveCallInterval = null;
+var liveCallStart = null;
+
+function formatDuration(seconds) {
+    var m = Math.floor(seconds / 60);
+    var s = seconds % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
 }
 
-function renderStatusCards(data) {
-    const s = data.system;
-    const cpuText = s.cpu_temp !== null ? s.cpu_temp + "\u00b0C" : "N/A";
-    const ramText = s.ram_used_mb + " / " + s.ram_total_mb + " MB";
-
-    return `
-    <article class="data-card">
-        <h3>System Health</h3>
-        <div class="value" style="font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem;">
-            <div>CPU: ${cpuText}</div>
-            <div>RAM: ${ramText}</div>
-            <div>Disk: ${s.disk_used_pct}%</div>
-        </div>
-    </article>
-    <article class="data-card">
-        <h3>Asterisk PBX</h3>
-        <div class="value">
-            <span class="status-badge">
-                <span class="status-dot ${statusDot(data.asterisk.status)}"></span>
-                ${data.asterisk.status.replace(/_/g, " ")}
-            </span>
-        </div>
-    </article>
-    <article class="data-card">
-        <h3>AI Engine</h3>
-        <div class="value" style="font-size: 0.8rem;">
-            <div><span class="status-dot ${statusDot(data.ai.vosk)}"></span> Vosk: ${data.ai.vosk}</div>
-            <div><span class="status-dot ${statusDot(data.ai.ollama)}"></span> Ollama: ${data.ai.ollama}</div>
-            <div><span class="status-dot ${statusDot(data.ai.piper)}"></span> Piper: ${data.ai.piper}</div>
-        </div>
-    </article>
-    <article class="data-card">
-        <h3>MS Graph</h3>
-        <div class="value">
-            <span class="status-badge">
-                <span class="status-dot ${statusDot(data.graph.status)}"></span>
-                ${data.graph.status.replace(/_/g, " ")}
-            </span>
-        </div>
-    </article>
-    `;
+function showLiveCall(callerName, callerNumber, status) {
+    var card = document.getElementById("live-call-card");
+    card.style.display = "block";
+    document.getElementById("live-caller").textContent = callerName + (callerNumber ? " (" + callerNumber + ")" : "");
+    document.getElementById("live-status").textContent = status || "Answering call...";
+    liveCallStart = Date.now();
+    if (liveCallInterval) clearInterval(liveCallInterval);
+    liveCallInterval = setInterval(function() {
+        var elapsed = Math.floor((Date.now() - liveCallStart) / 1000);
+        document.getElementById("live-timer").textContent = formatDuration(elapsed);
+    }, 1000);
 }
+
+function hideLiveCall() {
+    document.getElementById("live-call-card").style.display = "none";
+    if (liveCallInterval) {
+        clearInterval(liveCallInterval);
+        liveCallInterval = null;
+    }
+}
+
+// Socket.IO for live call updates
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof io !== "undefined") {
+        var socket = io();
+        socket.on("call_started", function(data) {
+            showLiveCall(data.caller_name || "Unknown caller", data.caller_number || "", "Greeting caller...");
+        });
+        socket.on("call_status", function(data) {
+            if (data.status) {
+                document.getElementById("live-status").textContent = data.status;
+            }
+        });
+        socket.on("call_ended", function() {
+            hideLiveCall();
+        });
+    }
+});
 </script>
-
-<h2>Recent Calls</h2>
-<div class="empty-state">
-    <p>No calls yet.</p>
-    <p>Your first call will appear here once SIP is configured.</p>
-    <div class="action">
-        <a href="/sip" role="button">Set up SIP trunk</a>
-    </div>
-</div>
 {% endblock %}
