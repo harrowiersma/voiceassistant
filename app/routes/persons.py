@@ -81,17 +81,24 @@ def edit(person_id):
 
     person = conn.execute("SELECT * FROM persons WHERE id = ?", (person_id,)).fetchone()
     personas = conn.execute("SELECT id, name, company_name FROM personas WHERE enabled = 1 ORDER BY name").fetchall()
-    # Check if this person has a Google Calendar token
     google_token = conn.execute(
         "SELECT 1 FROM oauth_tokens WHERE provider = 'google' AND person_id = ?",
         (person_id,),
     ).fetchone()
+
+    # Get configured SIP extensions for the dropdown
+    extensions = []
+    for i in [1, 2, 3]:
+        ext_name = conn.execute("SELECT value FROM config WHERE key = ?", (f"sip.extension_{i}_name",)).fetchone()
+        if ext_name and ext_name["value"]:
+            extensions.append(ext_name["value"])
+
     conn.close()
     if not person:
         flash("Person not found.", "error")
         return redirect(url_for("persons.index"))
     return render_template("person_edit.html", person=dict(person), personas=personas,
-                           google_connected=google_token is not None)
+                           google_connected=google_token is not None, extensions=extensions)
 
 
 @bp.route("/persons/<int:person_id>/delete", methods=["POST"])

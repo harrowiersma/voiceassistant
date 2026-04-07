@@ -50,7 +50,17 @@
             <div class="grid">
                 <label>
                     Internal Extension
-                    <input type="text" name="internal_extension" value="{{ person.internal_extension or '' }}" placeholder="101">
+                    {% if extensions %}
+                    <select name="internal_extension">
+                        <option value="">None</option>
+                        {% for ext in extensions %}
+                        <option value="{{ ext }}" {{ 'selected' if person.internal_extension == ext }}>{{ ext }}</option>
+                        {% endfor %}
+                    </select>
+                    {% else %}
+                    <input type="text" name="internal_extension" value="{{ person.internal_extension or '' }}" placeholder="e.g. 101">
+                    <p class="help-text">No extensions configured. Add them on the <a href="/sip">Telephony</a> page.</p>
+                    {% endif %}
                 </label>
                 <label>
                     External Forward Number
